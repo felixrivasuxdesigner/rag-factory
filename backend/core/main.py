@@ -2,25 +2,20 @@ import logging
 import os
 from ..connectors.sparql_connector import SparqlConnector
 from ..processors.document_processor import DocumentProcessor
-from .database import get_db_connection, create_documents_table, insert_documents
+from ..processors.vectorizer import Vectorizer
+from .database import get_db_connection, setup_database, insert_documents, get_documents_without_embedding, update_document_embedding
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Configuration ---
-# In a real application, this would come from a config file (e.g., config/config.yml)
-# Note: The BCN endpoint has been unreliable during development.
-# The code is structured to work, but may fail if the endpoint is down or blocking requests.
 SPARQL_ENDPOINT = os.environ.get('SPARQL_ENDPOINT', 'https://datos.bcn.cl/es/endpoint-sparql')
 DOCUMENT_LIMIT = int(os.environ.get('DOCUMENT_LIMIT', 25))
 
 def run_ingestion_pipeline():
     """
-    Executes the full document ingestion pipeline.
-    1. Fetches data from a SPARQL source.
-    2. Processes the raw data into a clean format.
-    3. Stores the clean data in the database.
+    Executes the full document ingestion and vectorization pipeline.
     """
     logger.info("--- Starting document ingestion pipeline ---")
 
@@ -42,21 +37,40 @@ def run_ingestion_pipeline():
         return
 
     # 3. Store documents in the database
-    logger.info("Connecting to the database to store documents...")
+    logger.info("Connecting to the database...")
     db_conn = get_db_connection()
     if db_conn:
         try:
-            # Ensure the table exists
-            create_documents_table(db_conn)
-
-            # Insert the processed documents
+            # Step 3a: Ensure the table and extension exist, and insert documents
+            setup_database(db_conn)
             logger.info(f"Inserting {len(processed_documents)} processed documents into the database.")
             insert_documents(db_conn, processed_documents)
+
+            # Step 3b: Vectorize documents that don't have an embedding
+            logger.info("--- Starting vectorization process ---")
+            vectorizer = Vectorizer()
+            docs_to_vectorize = get_documents_without_embedding(db_conn, limit=DOCUMENT_LIMIT)
+
+            if not docs_to_vectorize:
+                logger.info("No new documents to vectorize.")
+            else:
+                logger.info(f"Found {len(docs_to_vectorize)} documents to vectorize.")
+                for doc_id, doc_title in docs_to_vectorize:
+                    logger.info(f"Generating embedding for doc: {doc_id} - '{doc_title[:50]}...'")
+                    embedding = vectorizer.generate_embedding(doc_title)
+
+                    if embedding:
+                        update_document_embedding(db_conn, doc_id, embedding)
+                    else:
+                        logger.warning(f"Could not generate embedding for doc {doc_id}. Skipping.")
+
+            logger.info("--- Vectorization process finished ---")
+
         finally:
             db_conn.close()
             logger.info("Database connection closed.")
     else:
-        logger.error("Could not establish a database connection. Documents were not saved.")
+        logger.error("Could not establish a database connection. Documents were not saved or vectorized.")
 
     logger.info("--- Document ingestion pipeline finished ---")
 
