@@ -28,7 +28,8 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: backend
-    command: python core/main.py
+    # Run as a module to ensure correct package resolution within the container
+    command: ["python", "-m", "core.main"]
     depends_on:
       - db
       - ollama
