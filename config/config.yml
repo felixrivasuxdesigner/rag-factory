@@ -1,0 +1,29 @@
+# Conceptual example
+sources:
+  - type: sparql
+    endpoint: https://datos.bcn.cl/es/endpoint-sparql
+    schedule: "*/5 * * * *"  # every 5 hrs
+    batch_size: 20
+    enabled: true
+
+database:
+  type: postgresql+pgvector
+  host: localhost  # Docker
+  port: 5432
+
+ollama:
+  host: localhost
+  port: 11434
+  embedding_model: mxbai-embed-large:latest
+
+dashboard:
+  host: localhost
+  port: 3000
+  api_port: 8000
+
+notifications:
+  discord:
+    webhook_url: ${DISCORD_WEBHOOK_URL}
+    enabled: true
+    levels: [ERROR, WARNING]
+    throttle: 300  # seconds between similar notifications
