@@ -6,9 +6,13 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import os
+import logging
 import psycopg2
 from redis import Redis
 from rq import Queue
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from .models import (
     RAGProjectCreate, RAGProjectUpdate, RAGProjectResponse,
@@ -384,19 +388,48 @@ def create_ingestion_job(job: IngestionJobCreate):
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     try:
-        # Get project configuration
+        # Get project and source configuration
         with conn.cursor() as cur:
+            # Get project
             cur.execute("SELECT * FROM rag_projects WHERE id = %s;", (job.project_id,))
-            project = cur.fetchone()
-            if not project:
+            project_row = cur.fetchone()
+            if not project_row:
                 raise HTTPException(status_code=404, detail="Project not found")
+
+            project_columns = [desc[0] for desc in cur.description]
+            project = dict(zip(project_columns, project_row))
+
+            # Get source if specified
+            source = None
+            if job.source_id:
+                cur.execute("SELECT * FROM data_sources WHERE id = %s AND project_id = %s;",
+                          (job.source_id, job.project_id))
+                source_row = cur.fetchone()
+                if not source_row:
+                    raise HTTPException(status_code=404, detail="Data source not found")
+
+                source_columns = [desc[0] for desc in cur.description]
+                source = dict(zip(source_columns, source_row))
+            else:
+                # If no source specified, get first active source for the project
+                cur.execute("""
+                    SELECT * FROM data_sources
+                    WHERE project_id = %s AND is_active = TRUE
+                    ORDER BY created_at ASC LIMIT 1;
+                """, (job.project_id,))
+                source_row = cur.fetchone()
+                if not source_row:
+                    raise HTTPException(status_code=400, detail="No active data source found for project")
+
+                source_columns = [desc[0] for desc in cur.description]
+                source = dict(zip(source_columns, source_row))
 
             # Create job record
             cur.execute("""
                 INSERT INTO ingestion_jobs (project_id, source_id, job_type, status)
                 VALUES (%s, %s, %s, 'queued')
                 RETURNING *;
-            """, (job.project_id, job.source_id, job.job_type))
+            """, (job.project_id, source['id'], job.job_type))
 
             result = cur.fetchone()
             columns = [desc[0] for desc in cur.description]
@@ -405,14 +438,55 @@ def create_ingestion_job(job: IngestionJobCreate):
 
         conn.commit()
 
-        # TODO: Enqueue job to RQ
-        # from ..workers.ingestion_tasks import ingest_documents_from_source
-        # task_queue.enqueue(ingest_documents_from_source, job_id, ...)
+        # Enqueue job to RQ
+        from ..workers.ingestion_tasks import ingest_documents_from_source
+
+        # Prepare configurations for worker
+        source_config = {
+            'source_type': source['source_type'],
+            'config': source['config'],
+            'country_code': source.get('country_code'),
+            'region': source.get('region'),
+            'tags': source.get('tags')
+        }
+
+        target_db_config = {
+            'host': project['target_db_host'],
+            'port': project['target_db_port'],
+            'database': project['target_db_name'],
+            'user': project['target_db_user'],
+            'password': project['target_db_password'],
+            'table_name': project['target_table_name']
+        }
+
+        embedding_config = {
+            'model': project['embedding_model'],
+            'dimension': project['embedding_dimension'],
+            'chunk_size': project['chunk_size'],
+            'chunk_overlap': project['chunk_overlap']
+        }
+
+        # Enqueue the job with 10 minute timeout
+        task_queue.enqueue(
+            ingest_documents_from_source,
+            job_id=job_id,
+            project_id=job.project_id,
+            source_id=source['id'],
+            source_config=source_config,
+            target_db_config=target_db_config,
+            embedding_config=embedding_config,
+            job_timeout=600  # 10 minutes
+        )
+
+        logger.info(f"✓ Enqueued ingestion job {job_id} for project {job.project_id}")
 
         return IngestionJobResponse(**job_data)
 
+    except HTTPException:
+        raise
     except Exception as e:
         conn.rollback()
+        logger.error(f"Failed to create job: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
@@ -437,6 +511,39 @@ def get_job_status(job_id: int):
             job_data = dict(zip(columns, result))
 
         return IngestionJobResponse(**job_data)
+
+    finally:
+        conn.close()
+
+
+@app.get("/projects/{project_id}/jobs", response_model=List[IngestionJobResponse])
+def list_project_jobs(project_id: int, status_filter: str = None, limit: int = 50):
+    """List ingestion jobs for a project."""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            if status_filter:
+                cur.execute("""
+                    SELECT * FROM ingestion_jobs
+                    WHERE project_id = %s AND status = %s
+                    ORDER BY created_at DESC
+                    LIMIT %s;
+                """, (project_id, status_filter, limit))
+            else:
+                cur.execute("""
+                    SELECT * FROM ingestion_jobs
+                    WHERE project_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT %s;
+                """, (project_id, limit))
+
+            columns = [desc[0] for desc in cur.description]
+            jobs = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return [IngestionJobResponse(**job) for job in jobs]
 
     finally:
         conn.close()
