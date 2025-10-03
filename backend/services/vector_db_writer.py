@@ -266,7 +266,7 @@ class VectorDBWriter:
         if tags:
             # Filter by tags - all provided tags must match
             for tag_key, tag_value in tags.items():
-                where_clauses.append(f"metadata->'tags'->>{%s} = %s")
+                where_clauses.append("metadata->'tags'->>%s = %s")
                 params.extend([tag_key, str(tag_value)])
 
         where_clause = " AND ".join(where_clauses)
@@ -359,10 +359,10 @@ if __name__ == '__main__':
     # Test configuration (using the existing DB for testing)
     config = {
         'host': 'localhost',
-        'port': 5432,
+        'port': 5433,
         'database': 'rag_factory_db',
-        'user': 'journeylaw',
-        'password': 'journeylaw_dev_2024',
+        'user': 'user',
+        'password': 'password',
         'table_name': 'test_vectors'
     }
 

@@ -54,15 +54,15 @@ def test_create_project() -> Dict:
     """Test 2: Create a RAG project"""
     log("\n=== Test 2: Create RAG Project ===")
 
-    # Using the existing database for testing
+    # Using RAG Factory database for testing
     project_data = {
         "name": TEST_PROJECT_NAME,
         "description": "Automated test project for RAG Factory MVP",
         "target_db_host": "localhost",
-        "target_db_port": 5432,
+        "target_db_port": 5433,  # RAG Factory PostgreSQL port
         "target_db_name": "rag_factory_db",
-        "target_db_user": "journeylaw",
-        "target_db_password": "journeylaw_dev_2024",
+        "target_db_user": "user",
+        "target_db_password": "password",
         "target_table_name": f"test_vectors_{int(time.time())}",
         "embedding_model": "mxbai-embed-large",
         "embedding_dimension": 1024,
@@ -90,7 +90,7 @@ def test_connection(project: Dict):
         "port": project["target_db_port"],
         "database": project["target_db_name"],
         "user": project["target_db_user"],
-        "password": project["target_db_password"]
+        "password": project.get("target_db_password", "password")  # Use default if not returned
     }
 
     response = requests.post(f"{API_BASE_URL}/test-connection", json=conn_test)

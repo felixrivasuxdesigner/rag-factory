@@ -14,15 +14,15 @@ from rq import Queue
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from .models import (
+from api.models import (
     RAGProjectCreate, RAGProjectUpdate, RAGProjectResponse,
     DataSourceCreate, DataSourceUpdate, DataSourceResponse,
     IngestionJobCreate, IngestionJobResponse,
     DocumentTrackingResponse, ProjectStats,
     DatabaseConnectionTest, ConnectionTestResponse
 )
-from ..core.database import get_db_connection
-from ..services.vector_db_writer import VectorDBWriter
+from core.database import get_db_connection
+from services.vector_db_writer import VectorDBWriter
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -439,7 +439,7 @@ def create_ingestion_job(job: IngestionJobCreate):
         conn.commit()
 
         # Enqueue job to RQ
-        from ..workers.ingestion_tasks import ingest_documents_from_source
+        from workers.ingestion_tasks import ingest_documents_from_source
 
         # Prepare configurations for worker
         source_config = {

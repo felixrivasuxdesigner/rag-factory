@@ -11,7 +11,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
     restart: unless-stopped
 
   ollama:
@@ -27,7 +27,7 @@ services:
     image: redis:7-alpine
     container_name: rag-factory-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -55,7 +55,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: rag-worker
-    command: ["rq", "worker", "--url", "redis://redis:6379/0", "rag-tasks"]
+    command: ["python", "-m", "rq.cli", "worker", "--url", "redis://redis:6379/0", "rag-tasks"]
     depends_on:
       - db
       - redis
@@ -64,6 +64,7 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
       - OLLAMA_HOST=ollama
       - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=/app
     restart: unless-stopped
 
   api:
@@ -71,7 +72,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: api
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: python run_api.py
     depends_on:
       - db
       - ollama
@@ -82,6 +83,7 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
       - OLLAMA_HOST=ollama
       - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=/app
     restart: unless-stopped
 
   frontend:
