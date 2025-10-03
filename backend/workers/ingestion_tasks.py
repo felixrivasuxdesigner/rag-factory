@@ -10,11 +10,11 @@ from datetime import datetime
 from typing import Dict, List
 import psycopg2
 
-from ..services.embedding_service import EmbeddingService
-from ..services.vector_db_writer import VectorDBWriter
-from ..connectors.sparql_connector import SparqlConnector
-from ..processors.document_processor import DocumentProcessor
-from ..core.database import get_db_connection
+from services.embedding_service import EmbeddingService
+from services.vector_db_writer import VectorDBWriter
+from connectors.sparql_connector import SparqlConnector
+from processors.document_processor import DocumentProcessor
+from core.database import get_db_connection
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -129,6 +129,9 @@ def ingest_documents_from_source(
             connector = SparqlConnector(source_config['config']['endpoint'])
             raw_docs = connector.get_leyes(limit=source_config['config'].get('limit', 25))
             documents = DocumentProcessor.process_sparql_result(raw_docs)
+        elif source_config['source_type'] == 'file_upload':
+            # Documents are already in the config
+            documents = source_config['config'].get('documents', [])
         else:
             raise NotImplementedError(f"Source type {source_config['source_type']} not yet implemented")
 

@@ -469,12 +469,12 @@ def create_ingestion_job(job: IngestionJobCreate):
         # Enqueue the job with 10 minute timeout
         task_queue.enqueue(
             ingest_documents_from_source,
-            job_id=job_id,
-            project_id=job.project_id,
-            source_id=source['id'],
-            source_config=source_config,
-            target_db_config=target_db_config,
-            embedding_config=embedding_config,
+            job_id,
+            job.project_id,
+            source['id'],
+            source_config,
+            target_db_config,
+            embedding_config,
             job_timeout=600  # 10 minutes
         )
 
