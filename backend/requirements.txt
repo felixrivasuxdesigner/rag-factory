@@ -3,3 +3,6 @@ uvicorn[standard]
 SPARQLWrapper
 psycopg2-binary
 requests
+rq
+redis
+python-multipart
