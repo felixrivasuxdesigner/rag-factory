@@ -93,12 +93,18 @@ class DataSourceCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     source_type: SourceType
     config: Dict  # Flexible config based on source type
+    country_code: Optional[str] = Field(None, max_length=10, description="ISO 3166-1 alpha-2 country code (e.g., 'CL', 'US')")
+    region: Optional[str] = Field(None, max_length=100, description="Region/state (e.g., 'California', 'Santiago')")
+    tags: Optional[Dict] = Field(None, description="Additional flexible tags (e.g., {'jurisdiction': 'federal', 'language': 'es'})")
     sync_frequency: str = "manual"
 
 
 class DataSourceUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     config: Optional[Dict] = None
+    country_code: Optional[str] = Field(None, max_length=10)
+    region: Optional[str] = Field(None, max_length=100)
+    tags: Optional[Dict] = None
     sync_frequency: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -109,6 +115,9 @@ class DataSourceResponse(BaseModel):
     name: str
     source_type: str
     config: Dict
+    country_code: Optional[str]
+    region: Optional[str]
+    tags: Optional[Dict]
     sync_frequency: str
     is_active: bool
     last_sync_at: Optional[datetime]

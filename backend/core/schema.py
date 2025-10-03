@@ -61,6 +61,11 @@ def create_internal_schema(conn):
         -- Connection details (stored as JSONB for flexibility)
         config JSONB NOT NULL, -- { "endpoint": "...", "query": "...", "headers": {...} }
 
+        -- Regional/Country identification
+        country_code VARCHAR(10), -- ISO 3166-1 alpha-2 (e.g., 'CL', 'US') or custom
+        region VARCHAR(100), -- Optional: region/state (e.g., 'California', 'Santiago')
+        tags JSONB, -- Additional flexible tags { "jurisdiction": "federal", "language": "es" }
+
         -- Scheduling
         sync_frequency VARCHAR(50) DEFAULT 'manual', -- manual, hourly, daily, weekly
         last_sync_at TIMESTAMP WITH TIME ZONE,

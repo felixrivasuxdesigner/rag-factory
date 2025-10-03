@@ -320,11 +320,19 @@ def create_data_source(source: DataSourceCreate):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO data_sources (project_id, name, source_type, config, sync_frequency)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO data_sources (
+                    project_id, name, source_type, config,
+                    country_code, region, tags, sync_frequency
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *;
-            """, (source.project_id, source.name, source.source_type.value,
-                  psycopg2.extras.Json(source.config), source.sync_frequency))
+            """, (
+                source.project_id, source.name, source.source_type.value,
+                psycopg2.extras.Json(source.config),
+                source.country_code, source.region,
+                psycopg2.extras.Json(source.tags) if source.tags else None,
+                source.sync_frequency
+            ))
 
             result = cur.fetchone()
             columns = [desc[0] for desc in cur.description]

@@ -201,16 +201,28 @@ def ingest_documents_from_source(
                 for chunk in chunks:
                     embedding = embedding_service.generate_embedding(chunk['text'])
                     if embedding:
+                        # Build metadata including country/region from source
+                        metadata = {
+                            **doc,
+                            'chunk_index': chunk['chunk_index'],
+                            'total_chunks': len(chunks),
+                            'content_hash': content_hash,
+                            'source_id': source_id
+                        }
+
+                        # Add country/region information from source_config
+                        if source_config.get('country_code'):
+                            metadata['country_code'] = source_config['country_code']
+                        if source_config.get('region'):
+                            metadata['region'] = source_config['region']
+                        if source_config.get('tags'):
+                            metadata['tags'] = source_config['tags']
+
                         chunk_embeddings.append({
                             'id': f"{doc.get('id')}_chunk_{chunk['chunk_index']}",
                             'content': chunk['text'],
                             'embedding': embedding,
-                            'metadata': {
-                                **doc,
-                                'chunk_index': chunk['chunk_index'],
-                                'total_chunks': len(chunks),
-                                'content_hash': content_hash
-                            }
+                            'metadata': metadata
                         })
 
                 if not chunk_embeddings:

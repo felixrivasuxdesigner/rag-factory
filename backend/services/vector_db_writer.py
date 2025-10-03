@@ -227,15 +227,21 @@ class VectorDBWriter:
         self,
         query_embedding: List[float],
         limit: int = 5,
-        threshold: float = 0.7
+        threshold: float = 0.7,
+        country_code: str = None,
+        region: str = None,
+        tags: Dict = None
     ) -> List[Dict]:
         """
-        Perform similarity search using cosine similarity.
+        Perform similarity search using cosine similarity with optional country/region filtering.
 
         Args:
             query_embedding: The query vector
             limit: Max results to return
             threshold: Minimum similarity score (0-1)
+            country_code: Filter by country code (e.g., 'CL', 'US')
+            region: Filter by region
+            tags: Filter by tags (must match all provided tags)
 
         Returns:
             List of matching documents with similarity scores
@@ -245,6 +251,26 @@ class VectorDBWriter:
 
         embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
 
+        # Build WHERE clause with filters
+        where_clauses = ["1 - (embedding <=> %s::vector) >= %s"]
+        params = [embedding_str, threshold]
+
+        if country_code:
+            where_clauses.append("metadata->>'country_code' = %s")
+            params.append(country_code)
+
+        if region:
+            where_clauses.append("metadata->>'region' = %s")
+            params.append(region)
+
+        if tags:
+            # Filter by tags - all provided tags must match
+            for tag_key, tag_value in tags.items():
+                where_clauses.append(f"metadata->'tags'->>{%s} = %s")
+                params.extend([tag_key, str(tag_value)])
+
+        where_clause = " AND ".join(where_clauses)
+
         query = f"""
         SELECT
             id,
@@ -252,14 +278,17 @@ class VectorDBWriter:
             metadata,
             1 - (embedding <=> %s::vector) as similarity
         FROM {self.table_name}
-        WHERE 1 - (embedding <=> %s::vector) >= %s
+        WHERE {where_clause}
         ORDER BY embedding <=> %s::vector
         LIMIT %s;
         """
 
+        # Add parameters for similarity calculation and ordering
+        final_params = [embedding_str] + params + [embedding_str, limit]
+
         try:
             with self.conn.cursor() as cur:
-                cur.execute(query, (embedding_str, embedding_str, threshold, embedding_str, limit))
+                cur.execute(query, final_params)
                 results = []
                 for row in cur.fetchall():
                     results.append({
@@ -268,6 +297,7 @@ class VectorDBWriter:
                         'metadata': row[2],
                         'similarity': float(row[3])
                     })
+                logger.info(f"Similarity search returned {len(results)} results")
                 return results
         except psycopg2.Error as e:
             logger.error(f"Similarity search failed: {e}", exc_info=True)
