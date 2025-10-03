@@ -3,9 +3,9 @@ version: '3.8'
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: vector-db
+    container_name: rag-factory-db
     environment:
-      - POSTGRES_DB=vector_db
+      - POSTGRES_DB=rag_factory_db
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
     volumes:
@@ -34,7 +34,7 @@ services:
       - db
       - ollama
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/vector_db
+      - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
       - OLLAMA_HOST=ollama
     restart: unless-stopped
 
@@ -50,7 +50,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/vector_db
+      - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
       - OLLAMA_HOST=ollama
     restart: unless-stopped
 

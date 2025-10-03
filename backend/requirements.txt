@@ -2,3 +2,4 @@ fastapi
 uvicorn[standard]
 SPARQLWrapper
 psycopg2-binary
+requests
