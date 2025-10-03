@@ -6,7 +6,7 @@ from psycopg2.extras import execute_values
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:password@localhost:5432/vector_db')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:password@localhost:5432/rag_factory_db')
 
 def get_db_connection():
     """

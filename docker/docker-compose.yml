@@ -3,9 +3,9 @@ version: '3.8'
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: vector-db
+    container_name: rag-factory-db
     environment:
-      - POSTGRES_DB=vector_db
+      - POSTGRES_DB=rag_factory_db
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
     volumes:
@@ -23,6 +23,16 @@ services:
       - "11434:11434"
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: rag-factory-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
   backend:
     build:
       context: ../backend
@@ -33,9 +43,27 @@ services:
     depends_on:
       - db
       - ollama
+      - redis
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/vector_db
+      - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
       - OLLAMA_HOST=ollama
+      - REDIS_URL=redis://redis:6379/0
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: rag-worker
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "rag-tasks"]
+    depends_on:
+      - db
+      - redis
+      - ollama
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
+      - OLLAMA_HOST=ollama
+      - REDIS_URL=redis://redis:6379/0
     restart: unless-stopped
 
   api:
@@ -47,11 +75,13 @@ services:
     depends_on:
       - db
       - ollama
+      - redis
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/vector_db
+      - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
       - OLLAMA_HOST=ollama
+      - REDIS_URL=redis://redis:6379/0
     restart: unless-stopped
 
   frontend:
@@ -68,3 +98,4 @@ services:
 volumes:
   pgdata:
   ollama_data:
+  redis_data:
