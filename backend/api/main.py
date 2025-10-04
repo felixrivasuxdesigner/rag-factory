@@ -376,6 +376,36 @@ def list_project_sources(project_id: int):
         conn.close()
 
 
+@app.delete("/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_data_source(source_id: int):
+    """Delete a data source."""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Check if source exists
+            cur.execute("SELECT id FROM data_sources WHERE id = %s;", (source_id,))
+            if not cur.fetchone():
+                raise HTTPException(status_code=404, detail="Data source not found")
+
+            # Delete the source (will cascade to related records)
+            cur.execute("DELETE FROM data_sources WHERE id = %s;", (source_id,))
+
+        conn.commit()
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to delete source: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
 # ============================================================================
 # Ingestion Job Endpoints
 # ============================================================================
