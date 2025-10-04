@@ -1,8 +1,8 @@
 # Next Steps for RAG Factory
 
-## Current Status (Actualizado: 2025-10-03)
-✅ MVP Backend completado y funcionando
-✅ Infraestructura Docker configurada (PostgreSQL:5433, Redis:6380, Ollama:11434, API:8000)
+## Current Status (Actualizado: 2025-10-03 - Noche)
+✅ **MVP COMPLETO - Backend + Frontend Funcionando**
+✅ Infraestructura Docker configurada (PostgreSQL:5433, Redis:6380, Ollama:11434, API:8000, Frontend:3000)
 ✅ Base de datos inicializada con schema completo
 ✅ API respondiendo correctamente en http://localhost:8000
 ✅ Health check pasando: API, Database, Redis, Ollama
@@ -10,6 +10,7 @@
 ✅ **Pipeline de ingesta funcionando end-to-end**
 ✅ **pgvector habilitado y vectores almacenados correctamente**
 ✅ **Modelo mxbai-embed-large (1024 dims) descargado en contenedor Ollama**
+✅ **Frontend React completamente integrado con CRUD completo**
 
 ### Tests Backend Completados ✅
 - ✅ Ejecutar test completo del backend
@@ -20,27 +21,50 @@
 - ✅ Validar deduplicación por hash SHA-256
 - ✅ Validar tracking de documentos en BD interna
 
+### Frontend Completado ✅
+- ✅ Dashboard React con TypeScript funcionando
+- ✅ Health monitoring de todos los servicios
+- ✅ CRUD completo de proyectos (Create, Read, Update, Delete)
+- ✅ CRUD completo de data sources (Create, Read, Delete)
+- ✅ Formularios dinámicos según tipo de source (SPARQL, file_upload)
+- ✅ Modales de edición y confirmación
+- ✅ Alertas de éxito/error
+- ✅ UI profesional con tooltips y explicaciones
+- ✅ Info box explicando arquitectura de dos bases de datos
+- ✅ Valores por defecto pre-llenados para testing rápido
+- ✅ Botones de acción (✏️ editar, 🗑️ eliminar) en cards
+
 ### Correcciones Aplicadas
 - ✅ Fixed: Importaciones relativas → absolutas en ingestion_tasks.py
 - ✅ Fixed: RQ enqueue call con argumentos posicionales
 - ✅ Added: Soporte para source_type 'file_upload'
-- ✅ Commit: `05d1ad9` - Backend fixes and testing complete
+- ✅ Fixed: Node.js v20 en Dockerfile frontend
+- ✅ Fixed: Color scheme (eliminado dark mode)
+- ✅ Added: DELETE /sources/{id} endpoint en backend
+- ✅ Commits: `05d1ad9`, `83c694d`
 
 ## Pendiente para próxima sesión
 
-### 1. Búsqueda de Similitud (Opcional)
+### 1. Testing Completo del Sistema
+- [ ] Probar flujo completo desde UI
+- [ ] Crear proyecto con SPARQL (Chilean BCN endpoint)
+- [ ] Ejecutar job de ingesta con datos reales
+- [ ] Verificar vectores en base de datos
+- [ ] Probar edición de proyectos
+- [ ] Probar eliminación con confirmación
+
+### 2. Búsqueda de Similitud (Opcional)
 - [ ] Implementar endpoint de búsqueda semántica
 - [ ] Probar consultas de similitud con vectores almacenados
+- [ ] Agregar UI para búsqueda en frontend
 
-### 2. Frontend
-- [ ] Arreglar problema de Node.js version (requiere 20.19+, actual 18.20.8)
-  - Opción 1: Actualizar Node en Dockerfile frontend
-  - Opción 2: Degradar versión de Vite
-- [ ] Levantar frontend en http://localhost:3000
-- [ ] Conectar con API backend
-- [ ] Probar flujo completo desde UI
+### 3. Mejoras Futuras
+- [ ] WebSocket para progreso de jobs en tiempo real
+- [ ] Soporte para más tipos de sources (REST API, web scraping)
+- [ ] Autenticación y multi-usuario
+- [ ] Programación de syncs automáticos
 
-### 3. Documentación
+### 4. Documentación
 - [ ] Actualizar README con instrucciones de uso
 - [ ] Documentar ejemplos de uso con curl
 - [ ] Agregar troubleshooting común
