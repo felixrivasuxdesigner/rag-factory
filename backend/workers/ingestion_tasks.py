@@ -13,6 +13,8 @@ import psycopg2
 from services.embedding_service import EmbeddingService
 from services.vector_db_writer import VectorDBWriter
 from connectors.sparql_connector import SparqlConnector
+from connectors.chile_full_text_connector import ChileFullTextConnector
+from connectors.congress_full_text_connector import CongressFullTextConnector
 from processors.document_processor import DocumentProcessor
 from core.database import get_db_connection
 
@@ -139,9 +141,34 @@ def ingest_documents_from_source(
 
             raw_docs = connector.get_leyes(limit=limit, custom_query=custom_query)
             documents = DocumentProcessor.process_sparql_result(raw_docs)
+
+        elif source_config['source_type'] == 'chile_fulltext':
+            # Chile BCN with full XML text
+            endpoint = source_config['config'].get('endpoint', 'https://datos.bcn.cl/sparql')
+            limit = source_config['config'].get('limit', 10)
+            offset = source_config['config'].get('offset', 0)
+
+            connector = ChileFullTextConnector(sparql_endpoint=endpoint)
+            documents = connector.get_norms_with_full_text(limit=limit, offset=offset)
+
+        elif source_config['source_type'] == 'congress_api':
+            # US Congress API with full bill text
+            api_key = source_config['config'].get('api_key', 'DEMO_KEY')
+            congress = source_config['config'].get('congress', 119)
+            limit = source_config['config'].get('limit', 10)
+            offset = source_config['config'].get('offset', 0)
+
+            connector = CongressFullTextConnector(api_key=api_key)
+            documents = connector.get_bills_with_full_text(
+                congress=congress,
+                limit=limit,
+                offset=offset
+            )
+
         elif source_config['source_type'] == 'file_upload':
             # Documents are already in the config
             documents = source_config['config'].get('documents', [])
+
         else:
             raise NotImplementedError(f"Source type {source_config['source_type']} not yet implemented")
 

@@ -11,6 +11,8 @@ from enum import Enum
 # Enums
 class SourceType(str, Enum):
     SPARQL = "sparql"
+    CHILE_FULLTEXT = "chile_fulltext"
+    CONGRESS_API = "congress_api"
     REST_API = "rest_api"
     FILE_UPLOAD = "file_upload"
     WEB_SCRAPE = "web_scrape"
