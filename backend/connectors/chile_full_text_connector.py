@@ -7,47 +7,64 @@ import logging
 import requests
 import xml.etree.ElementTree as ET
 from SPARQLWrapper import SPARQLWrapper, JSON
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from services.rate_limiter import RateLimiter, RateLimitConfig, get_preset_config
+from connectors.base_connector import BaseConnector, ConnectorMetadata
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class ChileFullTextConnector:
+class ChileFullTextConnector(BaseConnector):
     """
     Fetches Chilean norms with full text content from BCN SPARQL + LeyChile XML.
     """
 
-    def __init__(
-        self,
-        sparql_endpoint: str = "https://datos.bcn.cl/sparql",
-        rate_limit_config: Optional[Dict] = None
-    ):
+    @classmethod
+    def get_metadata(cls) -> ConnectorMetadata:
+        """Return connector metadata."""
+        return ConnectorMetadata(
+            name="Chile BCN Full Text",
+            source_type="chile_fulltext",
+            description="Fetches Chilean legal norms with complete text from BCN SPARQL and LeyChile XML",
+            version="2.0.0",
+            author="RAG Factory",
+            supports_incremental_sync=True,
+            supports_rate_limiting=True,
+            required_config_fields=[],
+            optional_config_fields=["endpoint", "limit", "offset"],
+            default_rate_limit_preset="chile_bcn_conservative"
+        )
+
+    def __init__(self, config: Dict[str, Any], rate_limit_config: Optional[Dict] = None):
         """
         Initialize connector.
 
         Args:
-            sparql_endpoint: BCN SPARQL endpoint URL
+            config: Configuration dict with optional 'endpoint', 'limit', 'offset'
             rate_limit_config: Rate limiting config dict (preset name or full config)
         """
-        self.sparql_endpoint = sparql_endpoint
-        self.sparql = SPARQLWrapper(sparql_endpoint)
+        # Call parent init for validation
+        super().__init__(config, rate_limit_config)
+
+        # Extract config
+        self.sparql_endpoint = config.get('endpoint', 'https://datos.bcn.cl/sparql')
+        self.sparql = SPARQLWrapper(self.sparql_endpoint)
         self.sparql.agent = "Mozilla/5.0 (compatible; RAGFactory/1.0)"
 
         # Initialize rate limiter
         if rate_limit_config:
             if 'preset' in rate_limit_config:
                 # Use preset config
-                config = get_preset_config(rate_limit_config['preset'])
+                rate_config = get_preset_config(rate_limit_config['preset'])
             else:
                 # Use custom config
-                config = RateLimitConfig(**rate_limit_config)
+                rate_config = RateLimitConfig(**rate_limit_config)
         else:
             # Default to conservative Chile config
-            config = get_preset_config('chile_bcn_conservative')
+            rate_config = get_preset_config('chile_bcn_conservative')
 
-        self.rate_limiter = RateLimiter(config, source_name="Chile BCN")
+        self.rate_limiter = RateLimiter(rate_config, source_name="Chile BCN")
 
     def execute_sparql(self, query: str) -> List[Dict]:
         """Execute SPARQL query and return results."""
@@ -144,7 +161,7 @@ class ChileFullTextConnector:
             logger.error(f"Unexpected error fetching XML: {e}")
             return None
 
-    def get_norms_with_full_text(
+    def fetch_documents(
         self,
         limit: int = 10,
         offset: int = 0,
@@ -236,18 +253,43 @@ LIMIT {limit}
         logger.info(f"✓ Fetched {len(enriched_documents)} norms with full text")
         return enriched_documents
 
+    def get_norms_with_full_text(self, limit: int = 10, offset: int = 0, since: Optional[str] = None) -> List[Dict]:
+        """
+        Legacy method name for backward compatibility.
+        Calls fetch_documents() internally.
+        """
+        return self.fetch_documents(limit=limit, offset=offset, since=since)
+
 
 if __name__ == '__main__':
     """Test the enhanced connector"""
     print("=" * 70)
-    print("Testing Chile Full Text Connector")
+    print("Testing Chile Full Text Connector (Plugin Architecture)")
     print("=" * 70)
 
-    connector = ChileFullTextConnector()
+    # Display connector metadata
+    metadata = ChileFullTextConnector.get_metadata()
+    print(f"\n📋 Connector Metadata:")
+    print(f"  Name: {metadata.name}")
+    print(f"  Type: {metadata.source_type}")
+    print(f"  Version: {metadata.version}")
+    print(f"  Supports Incremental Sync: {metadata.supports_incremental_sync}")
+    print(f"  Supports Rate Limiting: {metadata.supports_rate_limiting}")
+    print(f"  Default Rate Limit: {metadata.default_rate_limit_preset}")
+
+    # Initialize connector
+    config = {}  # Using defaults
+    connector = ChileFullTextConnector(config)
+
+    # Test connection
+    print("\n🔌 Testing connection...")
+    test_result = connector.test_connection()
+    print(f"  Status: {'✅ Success' if test_result['success'] else '❌ Failed'}")
+    print(f"  Message: {test_result['message']}")
 
     # Fetch 3 norms with full text
     print("\n📥 Fetching 3 Chilean norms with full text content...\n")
-    norms = connector.get_norms_with_full_text(limit=3)
+    norms = connector.fetch_documents(limit=3)
 
     if norms:
         print(f"✅ Successfully fetched {len(norms)} norms\n")

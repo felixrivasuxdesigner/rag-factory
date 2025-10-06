@@ -28,6 +28,7 @@ from services.vector_db_writer import VectorDBWriter
 from services.search_service import SearchService
 from services.embedding_service import EmbeddingService
 from services.llm_service import LLMService
+from connectors.registry import get_registry
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -107,6 +108,66 @@ def health_check():
         health["ollama"] = "unhealthy"
 
     return health
+
+
+@app.get("/connectors")
+def list_connectors():
+    """
+    List all available connectors with their metadata.
+
+    Returns connector information including:
+    - name: Human-readable connector name
+    - source_type: Unique type identifier
+    - description: What the connector does
+    - version: Connector version
+    - supports_incremental_sync: Whether it supports date-based filtering
+    - supports_rate_limiting: Whether it implements rate limiting
+    - required_config_fields: Required configuration fields
+    - optional_config_fields: Optional configuration fields
+    """
+    try:
+        registry = get_registry()
+        connectors = registry.list_connectors()
+
+        return {
+            "total": len(connectors),
+            "connectors": connectors
+        }
+    except Exception as e:
+        logger.error(f"Failed to list connectors: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve connector list: {str(e)}"
+        )
+
+
+@app.get("/connectors/{source_type}")
+def get_connector_info(source_type: str):
+    """
+    Get detailed information about a specific connector.
+
+    Args:
+        source_type: The connector type identifier (e.g., 'chile_fulltext')
+    """
+    try:
+        registry = get_registry()
+        metadata = registry.get_metadata(source_type)
+
+        if not metadata:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Connector type '{source_type}' not found"
+            )
+
+        return metadata.to_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get connector info: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve connector info: {str(e)}"
+        )
 
 
 # ============================================================================

@@ -6,31 +6,48 @@ Replaces metadata-only queries with rich bill content.
 import logging
 import requests
 import xml.etree.ElementTree as ET
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from services.rate_limiter import RateLimiter, RateLimitConfig, get_preset_config
+from connectors.base_connector import BaseConnector, ConnectorMetadata
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class CongressFullTextConnector:
+class CongressFullTextConnector(BaseConnector):
     """
     Fetches US Congress bills with full text content from Congress.gov API.
     """
 
-    def __init__(
-        self,
-        api_key: str = "DEMO_KEY",
-        rate_limit_config: Optional[Dict] = None
-    ):
+    @classmethod
+    def get_metadata(cls) -> ConnectorMetadata:
+        """Return connector metadata."""
+        return ConnectorMetadata(
+            name="US Congress Full Text",
+            source_type="congress_api",
+            description="Fetches US Congress bills with complete legislative text from Congress.gov API",
+            version="2.0.0",
+            author="RAG Factory",
+            supports_incremental_sync=True,
+            supports_rate_limiting=True,
+            required_config_fields=[],
+            optional_config_fields=["api_key", "congress", "limit", "offset"],
+            default_rate_limit_preset="congress_api_demo"
+        )
+
+    def __init__(self, config: Dict[str, Any], rate_limit_config: Optional[Dict] = None):
         """
         Initialize connector.
 
         Args:
-            api_key: Congress.gov API key (default uses DEMO_KEY with rate limits)
+            config: Configuration dict with optional 'api_key', 'congress', 'limit', 'offset'
             rate_limit_config: Rate limiting config dict (preset name or full config)
         """
-        self.api_key = api_key
+        # Call parent init for validation
+        super().__init__(config, rate_limit_config)
+
+        # Extract config
+        self.api_key = config.get('api_key', 'DEMO_KEY')
         self.base_url = "https://api.congress.gov/v3"
         self.session = requests.Session()
         self.session.headers.update({
@@ -41,18 +58,18 @@ class CongressFullTextConnector:
         if rate_limit_config:
             if 'preset' in rate_limit_config:
                 # Use preset config
-                config = get_preset_config(rate_limit_config['preset'])
+                rate_config = get_preset_config(rate_limit_config['preset'])
             else:
                 # Use custom config
-                config = RateLimitConfig(**rate_limit_config)
+                rate_config = RateLimitConfig(**rate_limit_config)
         else:
             # Default based on API key
-            if api_key == "DEMO_KEY":
-                config = get_preset_config('congress_api_demo')
+            if self.api_key == "DEMO_KEY":
+                rate_config = get_preset_config('congress_api_demo')
             else:
-                config = get_preset_config('congress_api_registered')
+                rate_config = get_preset_config('congress_api_registered')
 
-        self.rate_limiter = RateLimiter(config, source_name="Congress API")
+        self.rate_limiter = RateLimiter(rate_config, source_name="Congress API")
 
     def _api_request(self, url: str) -> Optional[Dict]:
         """Make API request with error handling and rate limiting."""
@@ -218,9 +235,8 @@ class CongressFullTextConnector:
             logger.error(f"Error processing XML: {e}")
             return None
 
-    def get_bills_with_full_text(
+    def fetch_documents(
         self,
-        congress: int = 119,
         limit: int = 10,
         offset: int = 0,
         since: Optional[str] = None
@@ -229,7 +245,6 @@ class CongressFullTextConnector:
         Fetch bills with full text content.
 
         Args:
-            congress: Congress number
             limit: Maximum number of bills
             offset: Number of bills to skip
             since: ISO date string (YYYY-MM-DD) to fetch only bills updated after this date
@@ -237,6 +252,9 @@ class CongressFullTextConnector:
         Returns:
             List of bills with full text
         """
+        # Get congress from config or default to current (119)
+        congress = self.config.get('congress', 119)
+
         # Fetch bill list with optional date filter
         bills = self.fetch_bill_list(congress=congress, limit=limit, offset=offset, since=since)
 
@@ -294,18 +312,51 @@ class CongressFullTextConnector:
         logger.info(f"✓ Fetched {len(enriched_bills)} bills with content")
         return enriched_bills
 
+    def get_bills_with_full_text(
+        self,
+        congress: int = 119,
+        limit: int = 10,
+        offset: int = 0,
+        since: Optional[str] = None
+    ) -> List[Dict]:
+        """
+        Legacy method name for backward compatibility.
+        Calls fetch_documents() internally.
+        """
+        # Update config with congress parameter
+        self.config['congress'] = congress
+        return self.fetch_documents(limit=limit, offset=offset, since=since)
+
 
 if __name__ == '__main__':
     """Test the enhanced connector"""
     print("=" * 70)
-    print("Testing Congress Full Text Connector")
+    print("Testing Congress Full Text Connector (Plugin Architecture)")
     print("=" * 70)
 
-    connector = CongressFullTextConnector()
+    # Display connector metadata
+    metadata = CongressFullTextConnector.get_metadata()
+    print(f"\n📋 Connector Metadata:")
+    print(f"  Name: {metadata.name}")
+    print(f"  Type: {metadata.source_type}")
+    print(f"  Version: {metadata.version}")
+    print(f"  Supports Incremental Sync: {metadata.supports_incremental_sync}")
+    print(f"  Supports Rate Limiting: {metadata.supports_rate_limiting}")
+    print(f"  Default Rate Limit: {metadata.default_rate_limit_preset}")
+
+    # Initialize connector
+    config = {'congress': 119}  # Test with current congress
+    connector = CongressFullTextConnector(config)
+
+    # Test connection
+    print("\n🔌 Testing connection...")
+    test_result = connector.test_connection()
+    print(f"  Status: {'✅ Success' if test_result['success'] else '❌ Failed'}")
+    print(f"  Message: {test_result['message']}")
 
     # Fetch 3 bills with full text
     print("\n📥 Fetching 3 US Congress bills with full text...\n")
-    bills = connector.get_bills_with_full_text(congress=119, limit=3)
+    bills = connector.fetch_documents(limit=3)
 
     if bills:
         print(f"✅ Successfully fetched {len(bills)} bills\n")

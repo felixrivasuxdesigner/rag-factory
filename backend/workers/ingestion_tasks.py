@@ -164,16 +164,15 @@ def ingest_documents_from_source(
 
         elif source_config['source_type'] == 'chile_fulltext':
             # Chile BCN with full XML text
-            endpoint = source_config['config'].get('endpoint', 'https://datos.bcn.cl/sparql')
             limit = source_config['config'].get('limit', 10)
             offset = source_config['config'].get('offset', 0)
             rate_limits = source_config.get('rate_limits')
 
             connector = ChileFullTextConnector(
-                sparql_endpoint=endpoint,
+                config=source_config['config'],
                 rate_limit_config=rate_limits
             )
-            documents = connector.get_norms_with_full_text(
+            documents = connector.fetch_documents(
                 limit=limit,
                 offset=offset,
                 since=last_sync_at
@@ -181,18 +180,15 @@ def ingest_documents_from_source(
 
         elif source_config['source_type'] == 'congress_api':
             # US Congress API with full bill text
-            api_key = source_config['config'].get('api_key', 'DEMO_KEY')
-            congress = source_config['config'].get('congress', 119)
             limit = source_config['config'].get('limit', 10)
             offset = source_config['config'].get('offset', 0)
             rate_limits = source_config.get('rate_limits')
 
             connector = CongressFullTextConnector(
-                api_key=api_key,
+                config=source_config['config'],
                 rate_limit_config=rate_limits
             )
-            documents = connector.get_bills_with_full_text(
-                congress=congress,
+            documents = connector.fetch_documents(
                 limit=limit,
                 offset=offset,
                 since=last_sync_at
