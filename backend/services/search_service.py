@@ -71,15 +71,23 @@ class SearchService:
             # Perform cosine similarity search
             # Using <=> operator for cosine distance (pgvector)
             # Similarity = 1 - distance
+            # Use subquery to calculate distance only once for efficiency
             query_sql = f"""
                 SELECT
                     id,
                     content,
                     metadata,
-                    1 - (embedding <=> %s::vector) AS similarity
-                FROM {table_name}
-                WHERE 1 - (embedding <=> %s::vector) >= %s
-                ORDER BY embedding <=> %s::vector
+                    similarity
+                FROM (
+                    SELECT
+                        id,
+                        content,
+                        metadata,
+                        1 - (embedding <=> %s::vector) AS similarity
+                    FROM {table_name}
+                ) AS results
+                WHERE similarity >= %s
+                ORDER BY similarity DESC
                 LIMIT %s
             """
 
@@ -88,7 +96,7 @@ class SearchService:
 
             cursor.execute(
                 query_sql,
-                (embedding_str, embedding_str, similarity_threshold, embedding_str, top_k)
+                (embedding_str, similarity_threshold, top_k)
             )
 
             results = cursor.fetchall()

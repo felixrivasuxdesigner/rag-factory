@@ -72,7 +72,7 @@ class EmbeddingService:
             response = requests.post(
                 self.embed_endpoint,
                 json=payload,
-                timeout=30
+                timeout=60
             )
 
             if response.status_code == 200:

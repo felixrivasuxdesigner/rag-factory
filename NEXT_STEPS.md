@@ -65,31 +65,53 @@
 - ✅ UI frontend con panel de búsqueda y RAG queries
 - ✅ Toggle entre modo "Search" y "Ask AI"
 - ✅ Favicon personalizado con ícono Factory
-- ✅ Tests exitosos con normas chilenas
+- ✅ **Proyecto demo "AI & RAG Knowledge Base" con contenido rico (6 docs, 16 chunks)**
+- ✅ **Comparación exitosa: RAG con contenido rico vs solo títulos**
+
+### Correcciones Críticas Aplicadas (2025-10-06)
+- ✅ **Fixed: Query SQL optimization** - Subquery para calcular similarity una sola vez
+- ✅ **Fixed: Embedding timeout** - Aumentado de 30s a 60s para queries complejas
+- ✅ **Commits:** Ver historial para details de los fixes
 
 ### Ejemplo de uso RAG:
 ```bash
 # Búsqueda semántica
 curl -X POST http://localhost:8000/search \
   -H "Content-Type: application/json" \
-  -d '{"project_id": 5, "query": "security installations", "top_k": 3}'
+  -d '{"project_id": 6, "query": "What is RAG", "top_k": 3, "similarity_threshold": 0.3}'
 
 # RAG Query (búsqueda + AI generación)
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{
-    "project_id": 5,
-    "question": "What is the regulation about production installations?",
+    "project_id": 6,
+    "question": "What is RAG and how does it work?",
     "top_k": 3,
+    "similarity_threshold": 0.3,
     "model": "gemma3:1b-it-qat",
     "max_tokens": 400
   }'
 ```
 
-### Resultado de prueba:
-**Pregunta:** "What is the regulation about production and security installations?"
-**Respuesta:** "The regulation is about modification of the regulation for safety of installations and operations of production and refinement, transport, storage, distribution and supply of liquid combustible."
-**Fuentes:** 3 documentos con similitud >65%
+### Resultados de pruebas comparativas:
+
+**Proyecto 6 (Rich Content - "AI & RAG Knowledge Base"):**
+- Pregunta: "What is RAG and how does it work?"
+- Respuesta: Explicación detallada del pipeline RAG (8 pasos), beneficios y desafíos
+- Fuentes: 3 chunks con similitudes 67%, 57%, 50%
+- Calidad: ⭐⭐⭐⭐⭐ Respuesta completa y precisa basada en contexto real
+
+**Proyecto 4 (Titles Only - USA Congress Bills):**
+- Pregunta: "What regulations exist about concealed carry?"
+- Respuesta: "I don't have enough information to answer that question."
+- Fuentes: 3 documentos con 62%, 54%, 40% similarity (solo títulos)
+- Calidad: ⭐ LLM correctamente rechaza responder sin contexto suficiente
+
+**Proyecto 5 (Titles Only - Chile BCN):**
+- Pregunta: "Qué regulaciones existen sobre instalaciones de combustible?"
+- Respuesta: Parafraseo del título encontrado (similarity 79%)
+- Fuentes: Solo títulos sin contenido
+- Calidad: ⭐⭐ Respuesta limitada, solo puede parafrasear títulos
 
 ## Pendiente para próxima sesión
 
