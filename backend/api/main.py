@@ -111,15 +111,21 @@ def health_check():
 
 
 @app.get("/connectors")
-def list_connectors():
+def list_connectors(category: str = None):
     """
     List all available connectors with their metadata.
+
+    Args:
+        category: Optional filter by category ("public", "example", "private").
+                 Defaults to None (all connectors).
+                 Use "public" to get only universal/shareable connectors.
 
     Returns connector information including:
     - name: Human-readable connector name
     - source_type: Unique type identifier
     - description: What the connector does
     - version: Connector version
+    - category: Connector category (public/example/private)
     - supports_incremental_sync: Whether it supports date-based filtering
     - supports_rate_limiting: Whether it implements rate limiting
     - required_config_fields: Required configuration fields
@@ -127,10 +133,11 @@ def list_connectors():
     """
     try:
         registry = get_registry()
-        connectors = registry.list_connectors()
+        connectors = registry.list_connectors(category=category)
 
         return {
             "total": len(connectors),
+            "category": category if category else "all",
             "connectors": connectors
         }
     except Exception as e:

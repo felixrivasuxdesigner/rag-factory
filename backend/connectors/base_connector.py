@@ -22,6 +22,7 @@ class ConnectorMetadata:
         description: str,
         version: str = "1.0.0",
         author: str = "RAG Factory",
+        category: str = "public",
         supports_incremental_sync: bool = False,
         supports_rate_limiting: bool = False,
         required_config_fields: List[str] = None,
@@ -32,11 +33,15 @@ class ConnectorMetadata:
         Initialize connector metadata.
 
         Args:
-            name: Human-readable connector name (e.g., "Chile BCN Full Text")
-            source_type: Unique type identifier (e.g., "chile_fulltext")
+            name: Human-readable connector name (e.g., "GitHub Repository")
+            source_type: Unique type identifier (e.g., "github")
             description: Brief description of what this connector does
             version: Semantic version of the connector
             author: Connector author/maintainer
+            category: Connector category:
+                     - "public": Universal/shareable connectors (GitHub, Slack, etc.)
+                     - "example": Pre-configured examples of generic connectors
+                     - "private": User-specific/internal connectors
             supports_incremental_sync: Whether connector supports date-based filtering
             supports_rate_limiting: Whether connector implements rate limiting
             required_config_fields: List of required config keys
@@ -48,6 +53,7 @@ class ConnectorMetadata:
         self.description = description
         self.version = version
         self.author = author
+        self.category = category
         self.supports_incremental_sync = supports_incremental_sync
         self.supports_rate_limiting = supports_rate_limiting
         self.required_config_fields = required_config_fields or []
@@ -62,6 +68,7 @@ class ConnectorMetadata:
             'description': self.description,
             'version': self.version,
             'author': self.author,
+            'category': self.category,
             'supports_incremental_sync': self.supports_incremental_sync,
             'supports_rate_limiting': self.supports_rate_limiting,
             'required_config_fields': self.required_config_fields,

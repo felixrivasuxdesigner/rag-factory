@@ -101,14 +101,23 @@ class ConnectorRegistry:
         """
         return self._metadata_cache.get(source_type)
 
-    def list_connectors(self) -> List[Dict[str, any]]:
+    def list_connectors(self, category: Optional[str] = None) -> List[Dict[str, any]]:
         """
         List all registered connectors with their metadata.
+
+        Args:
+            category: Optional filter by category ("public", "example", "private")
+                     If None, returns all connectors.
 
         Returns:
             List of connector metadata dictionaries
         """
-        return [metadata.to_dict() for metadata in self._metadata_cache.values()]
+        metadatas = self._metadata_cache.values()
+
+        if category:
+            metadatas = [m for m in metadatas if m.category == category]
+
+        return [metadata.to_dict() for metadata in metadatas]
 
     def get_connector_types(self) -> List[str]:
         """
@@ -181,9 +190,14 @@ def get_registry() -> ConnectorRegistry:
 
 
 # Convenience functions
-def list_connectors() -> List[Dict[str, any]]:
-    """List all registered connectors."""
-    return get_registry().list_connectors()
+def list_connectors(category: Optional[str] = None) -> List[Dict[str, any]]:
+    """
+    List all registered connectors.
+
+    Args:
+        category: Optional filter by category ("public", "example", "private")
+    """
+    return get_registry().list_connectors(category=category)
 
 
 def get_connector_metadata(source_type: str) -> Optional[ConnectorMetadata]:

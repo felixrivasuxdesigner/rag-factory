@@ -24,11 +24,12 @@ class ChileFullTextConnector(BaseConnector):
     def get_metadata(cls) -> ConnectorMetadata:
         """Return connector metadata."""
         return ConnectorMetadata(
-            name="Chile BCN Full Text",
+            name="Chile BCN Full Text (Example)",
             source_type="chile_fulltext",
-            description="Fetches Chilean legal norms with complete text from BCN SPARQL and LeyChile XML",
+            description="Example: Chilean legal norms from BCN SPARQL + LeyChile XML. Demonstrates SPARQL connector usage.",
             version="2.0.0",
             author="RAG Factory",
+            category="example",
             supports_incremental_sync=True,
             supports_rate_limiting=True,
             required_config_fields=[],

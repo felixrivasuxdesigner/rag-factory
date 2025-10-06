@@ -23,11 +23,12 @@ class CongressFullTextConnector(BaseConnector):
     def get_metadata(cls) -> ConnectorMetadata:
         """Return connector metadata."""
         return ConnectorMetadata(
-            name="US Congress Full Text",
+            name="US Congress Full Text (Example)",
             source_type="congress_api",
-            description="Fetches US Congress bills with complete legislative text from Congress.gov API",
+            description="Example: US Congress bills from Congress.gov API. Demonstrates REST API connector usage.",
             version="2.0.0",
             author="RAG Factory",
+            category="example",
             supports_incremental_sync=True,
             supports_rate_limiting=True,
             required_config_fields=[],
