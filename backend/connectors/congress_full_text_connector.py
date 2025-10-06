@@ -92,7 +92,13 @@ class CongressFullTextConnector:
             logger.error(f"Request error: {e}")
             return None
 
-    def fetch_bill_list(self, congress: int = 119, limit: int = 10, offset: int = 0) -> List[Dict]:
+    def fetch_bill_list(
+        self,
+        congress: int = 119,
+        limit: int = 10,
+        offset: int = 0,
+        since: Optional[str] = None
+    ) -> List[Dict]:
         """
         Fetch list of bills from specified Congress.
 
@@ -100,12 +106,18 @@ class CongressFullTextConnector:
             congress: Congress number (e.g., 119 for current)
             limit: Number of bills to fetch
             offset: Number of bills to skip
+            since: ISO date string (YYYY-MM-DD) to fetch only bills updated after this date
 
         Returns:
             List of bill metadata
         """
+        # Build URL with optional date filter
         url = f"{self.base_url}/bill/{congress}?format=json&api_key={self.api_key}&limit={limit}&offset={offset}"
-        logger.info(f"Fetching bill list for Congress {congress}...")
+        if since:
+            # Congress API uses fromDateTime parameter (format: YYYY-MM-DDTHH:MM:SSZ)
+            url += f"&fromDateTime={since}T00:00:00Z"
+
+        logger.info(f"Fetching bill list for Congress {congress}" + (f" (since {since})" if since else ""))
 
         data = self._api_request(url)
 
@@ -206,7 +218,13 @@ class CongressFullTextConnector:
             logger.error(f"Error processing XML: {e}")
             return None
 
-    def get_bills_with_full_text(self, congress: int = 119, limit: int = 10, offset: int = 0) -> List[Dict]:
+    def get_bills_with_full_text(
+        self,
+        congress: int = 119,
+        limit: int = 10,
+        offset: int = 0,
+        since: Optional[str] = None
+    ) -> List[Dict]:
         """
         Fetch bills with full text content.
 
@@ -214,12 +232,13 @@ class CongressFullTextConnector:
             congress: Congress number
             limit: Maximum number of bills
             offset: Number of bills to skip
+            since: ISO date string (YYYY-MM-DD) to fetch only bills updated after this date
 
         Returns:
             List of bills with full text
         """
-        # Fetch bill list
-        bills = self.fetch_bill_list(congress=congress, limit=limit, offset=offset)
+        # Fetch bill list with optional date filter
+        bills = self.fetch_bill_list(congress=congress, limit=limit, offset=offset, since=since)
 
         if not bills:
             return []

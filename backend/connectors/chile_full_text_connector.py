@@ -144,22 +144,34 @@ class ChileFullTextConnector:
             logger.error(f"Unexpected error fetching XML: {e}")
             return None
 
-    def get_norms_with_full_text(self, limit: int = 10, offset: int = 0) -> List[Dict]:
+    def get_norms_with_full_text(
+        self,
+        limit: int = 10,
+        offset: int = 0,
+        since: Optional[str] = None
+    ) -> List[Dict]:
         """
         Fetch Chilean norms with full text content.
 
         Args:
             limit: Maximum number of documents to fetch
             offset: Number of documents to skip
+            since: ISO date string (YYYY-MM-DD) to fetch only norms published after this date
 
         Returns:
             List of documents with full text content
         """
+        # Build date filter if provided
+        date_filter = ""
+        if since:
+            date_filter = f'FILTER(?publishDate > "{since}"^^xsd:date)'
+
         # Query to get norm metadata including LeyChile codes
         query = f"""
 PREFIX bcnnorms: <http://datos.bcn.cl/ontologies/bcn-norms#>
 PREFIX dc: <http://purl.org/dc/elements/1.1/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 SELECT DISTINCT ?norma ?id ?title ?leychileCode ?publishDate ?type
 WHERE {{
@@ -167,7 +179,8 @@ WHERE {{
     ?norma dc:title ?title .
     ?norma a bcnnorms:Norm .
     ?norma bcnnorms:leychileCode ?leychileCode .
-    OPTIONAL {{ ?norma bcnnorms:publishDate ?publishDate }}
+    ?norma bcnnorms:publishDate ?publishDate .
+    {date_filter}
     OPTIONAL {{ ?norma a ?type }}
 }}
 ORDER BY DESC(?publishDate)

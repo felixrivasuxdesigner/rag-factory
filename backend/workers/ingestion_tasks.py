@@ -118,6 +118,25 @@ def ingest_documents_from_source(
     # Update job status to running
     update_job_progress(job_id, status='running', started_at=datetime.utcnow())
 
+    # Get last_sync_at for incremental sync
+    last_sync_at = None
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT last_sync_at FROM data_sources WHERE id = %s",
+                    (source_id,)
+                )
+                result = cur.fetchone()
+                if result and result[0]:
+                    last_sync_at = result[0].strftime('%Y-%m-%d')
+                    logger.info(f"Incremental sync: fetching documents since {last_sync_at}")
+        except Exception as e:
+            logger.warning(f"Failed to get last_sync_at: {e}")
+        finally:
+            conn.close()
+
     total_documents = 0
     processed = 0
     successful = 0
@@ -148,9 +167,17 @@ def ingest_documents_from_source(
             endpoint = source_config['config'].get('endpoint', 'https://datos.bcn.cl/sparql')
             limit = source_config['config'].get('limit', 10)
             offset = source_config['config'].get('offset', 0)
+            rate_limits = source_config.get('rate_limits')
 
-            connector = ChileFullTextConnector(sparql_endpoint=endpoint)
-            documents = connector.get_norms_with_full_text(limit=limit, offset=offset)
+            connector = ChileFullTextConnector(
+                sparql_endpoint=endpoint,
+                rate_limit_config=rate_limits
+            )
+            documents = connector.get_norms_with_full_text(
+                limit=limit,
+                offset=offset,
+                since=last_sync_at
+            )
 
         elif source_config['source_type'] == 'congress_api':
             # US Congress API with full bill text
@@ -158,12 +185,17 @@ def ingest_documents_from_source(
             congress = source_config['config'].get('congress', 119)
             limit = source_config['config'].get('limit', 10)
             offset = source_config['config'].get('offset', 0)
+            rate_limits = source_config.get('rate_limits')
 
-            connector = CongressFullTextConnector(api_key=api_key)
+            connector = CongressFullTextConnector(
+                api_key=api_key,
+                rate_limit_config=rate_limits
+            )
             documents = connector.get_bills_with_full_text(
                 congress=congress,
                 limit=limit,
-                offset=offset
+                offset=offset,
+                since=last_sync_at
             )
 
         elif source_config['source_type'] == 'file_upload':
@@ -317,6 +349,23 @@ def ingest_documents_from_source(
             completed_at=datetime.utcnow(),
             error_log='\n'.join(errors) if errors else None
         )
+
+        # Step 6: Update last_sync_at for incremental sync
+        conn = get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE data_sources SET last_sync_at = %s WHERE id = %s",
+                        (datetime.utcnow(), source_id)
+                    )
+                conn.commit()
+                logger.info(f"Updated last_sync_at for source {source_id}")
+            except Exception as e:
+                logger.warning(f"Failed to update last_sync_at: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
 
         logger.info(f"Job {job_id} completed: {successful} successful, {failed} failed out of {total_documents}")
 
