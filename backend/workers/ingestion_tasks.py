@@ -126,8 +126,18 @@ def ingest_documents_from_source(
         logger.info(f"Fetching documents from {source_config['source_type']}...")
 
         if source_config['source_type'] == 'sparql':
-            connector = SparqlConnector(source_config['config']['endpoint'])
-            raw_docs = connector.get_leyes(limit=source_config['config'].get('limit', 25))
+            # Get endpoint from config, or use default
+            endpoint = source_config['config'].get('endpoint', 'https://datos.bcn.cl/sparql')
+            if not endpoint or endpoint.strip() == '':
+                endpoint = 'https://datos.bcn.cl/sparql'
+
+            connector = SparqlConnector(endpoint)
+
+            # Get custom query if provided
+            custom_query = source_config['config'].get('query')
+            limit = source_config['config'].get('limit', 25)
+
+            raw_docs = connector.get_leyes(limit=limit, custom_query=custom_query)
             documents = DocumentProcessor.process_sparql_result(raw_docs)
         elif source_config['source_type'] == 'file_upload':
             # Documents are already in the config

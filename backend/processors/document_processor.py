@@ -29,14 +29,14 @@ class DocumentProcessor:
     @staticmethod
     def process_sparql_result(sparql_results: list) -> list[dict]:
         """
-        Processes the raw results from a SPARQL query about laws.
+        Processes the raw results from a SPARQL query about laws/norms.
         Extracts relevant fields and cleans the text.
 
         Args:
             sparql_results (list): The list of binding dictionaries from a SPARQL query.
 
         Returns:
-            list[dict]: A list of processed documents, each with a unique ID, title, and publication date.
+            list[dict]: A list of processed documents, each with a unique ID, title, and content.
         """
         processed_docs = []
         if not sparql_results:
@@ -44,21 +44,46 @@ class DocumentProcessor:
 
         for result in sparql_results:
             try:
-                doc_uri = result.get('ley', {}).get('value')
-                if not doc_uri:
-                    continue # Skip if there's no URI to act as an ID
+                # Try new format first (norma, id, title)
+                doc_id = result.get('id', {}).get('value')
+                title = result.get('title', {}).get('value')
+                doc_uri = result.get('norma', {}).get('value')
 
-                title = result.get('titulo', {}).get('value', 'N/A')
-                publication_date = result.get('fechaPublicacion', {}).get('value', 'N/A')
+                # Fallback to old format if new format not found
+                if not doc_id:
+                    doc_uri_old = result.get('ley', {}).get('value')
+                    title = result.get('titulo', {}).get('value', 'N/A')
+                    publication_date = result.get('fechaPublicacion', {}).get('value', 'N/A')
+                    if not doc_uri_old:
+                        continue
+                    doc_id = doc_uri_old
+                    doc_uri = doc_uri_old
+
+                if not doc_id or not title:
+                    continue
 
                 cleaned_title = DocumentProcessor.clean_text(title)
 
-                processed_docs.append({
-                    'id': doc_uri,
+                # Use title as content for now (in the future we could fetch full text)
+                content = cleaned_title
+
+                doc = {
+                    'id': str(doc_id),
                     'title': cleaned_title,
-                    'publication_date': publication_date,
+                    'content': content,
                     'source': 'SPARQL-BCN'
-                })
+                }
+
+                # Add URI if available
+                if doc_uri:
+                    doc['uri'] = doc_uri
+
+                # Add publication date if available (old format)
+                if 'fechaPublicacion' in result:
+                    doc['publication_date'] = result.get('fechaPublicacion', {}).get('value', 'N/A')
+
+                processed_docs.append(doc)
+
             except Exception as e:
                 logger.error(f"Error processing SPARQL result item: {result}. Error: {e}", exc_info=True)
 

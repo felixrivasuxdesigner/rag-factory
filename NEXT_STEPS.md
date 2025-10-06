@@ -1,6 +1,6 @@
 # Next Steps for RAG Factory
 
-## Current Status (Actualizado: 2025-10-03 - Noche)
+## Current Status (Actualizado: 2025-10-06 - Madrugada)
 ✅ **MVP COMPLETO - Backend + Frontend Funcionando**
 ✅ Infraestructura Docker configurada (PostgreSQL:5433, Redis:6380, Ollama:11434, API:8000, Frontend:3000)
 ✅ Base de datos inicializada con schema completo
@@ -11,6 +11,8 @@
 ✅ **pgvector habilitado y vectores almacenados correctamente**
 ✅ **Modelo mxbai-embed-large (1024 dims) descargado en contenedor Ollama**
 ✅ **Frontend React completamente integrado con CRUD completo**
+✅ **SPARQL Endpoint BCN Chile integrado y funcionando**
+✅ **5 normas chilenas ingresadas exitosamente desde BCN SPARQL**
 
 ### Tests Backend Completados ✅
 - ✅ Ejecutar test completo del backend
@@ -43,15 +45,25 @@
 - ✅ Added: DELETE /sources/{id} endpoint en backend
 - ✅ Commits: `05d1ad9`, `83c694d`
 
+### Nueva Funcionalidad SPARQL BCN Chile (2025-10-06)
+- ✅ Fixed: Endpoint SPARQL correcto (`https://datos.bcn.cl/sparql`)
+- ✅ Updated: SPARQL connector con soporte para custom queries
+- ✅ Updated: Document processor para nuevo formato de respuesta BCN
+- ✅ Fixed: Campo endpoint URL ahora es opcional en frontend
+- ✅ Added: Valor por defecto para BCN endpoint
+- ✅ Updated: Tutorial CHILE_SPARQL.md con instrucciones correctas
+- ✅ Tested: 5 normas chilenas ingresadas exitosamente (IDs: 632434, 632435, 635226, etc.)
+- ✅ Verified: Embeddings 1024d generados y almacenados en `chile_norms_vectors`
+
 ## Pendiente para próxima sesión
 
 ### 1. Testing Completo del Sistema
-- [ ] Probar flujo completo desde UI
-- [ ] Crear proyecto con SPARQL (Chilean BCN endpoint)
-- [ ] Ejecutar job de ingesta con datos reales
-- [ ] Verificar vectores en base de datos
-- [ ] Probar edición de proyectos
-- [ ] Probar eliminación con confirmación
+- [x] Probar flujo completo desde UI
+- [x] Crear proyecto con SPARQL (Chilean BCN endpoint)
+- [x] Ejecutar job de ingesta con datos reales
+- [x] Verificar vectores en base de datos
+- [x] Probar edición de proyectos
+- [x] Probar eliminación con confirmación
 
 ### 2. Búsqueda de Similitud (Opcional)
 - [ ] Implementar endpoint de búsqueda semántica

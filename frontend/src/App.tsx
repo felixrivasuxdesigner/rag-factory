@@ -1,4 +1,18 @@
 import { useState, useEffect } from 'react'
+import {
+  Factory,
+  CheckCircle,
+  XCircle,
+  Database,
+  CloudArrowUp,
+  PencilSimple,
+  Trash,
+  ArrowsClockwise,
+  Plus,
+  Play,
+  Info,
+  Warning
+} from '@phosphor-icons/react'
 import './App.css'
 
 const API_URL = 'http://localhost:8000'
@@ -333,13 +347,15 @@ function App() {
   }
 
   const getHealthIndicator = (status: string) => {
-    return status === 'healthy' ? '🟢' : '🔴'
+    return status === 'healthy'
+      ? <CheckCircle size={24} weight="fill" className="text-green-500" />
+      : <XCircle size={24} weight="fill" className="text-red-500" />
   }
 
   return (
     <div className="app">
       <header className="header">
-        <h1>🏭 RAG Factory</h1>
+        <h1><Factory size={32} weight="duotone" /> RAG Factory</h1>
         <p className="subtitle">Multi-Project RAG Management System</p>
       </header>
 
@@ -383,10 +399,10 @@ function App() {
           <h2>Projects</h2>
           <div className="button-group">
             <button onClick={loadProjects} disabled={loading} className="btn-secondary">
-              {loading ? '⟳' : '↻'} Refresh
+              <ArrowsClockwise size={18} weight={loading ? "bold" : "regular"} /> Refresh
             </button>
             <button onClick={() => setShowCreateProject(true)} className="btn-primary">
-              + New Project
+              <Plus size={18} weight="bold" /> New Project
             </button>
           </div>
         </div>
@@ -397,7 +413,7 @@ function App() {
               <h3>Create New RAG Project</h3>
 
               <div className="info-box">
-                <strong>ℹ️ About Database Configuration</strong>
+                <strong><Info size={18} weight="fill" /> About Database Configuration</strong>
                 <p>RAG Factory uses TWO databases:</p>
                 <ul>
                   <li><strong>Internal DB</strong> (automatic): Stores projects, jobs, tracking</li>
@@ -416,7 +432,7 @@ function App() {
                   <textarea name="description" rows={2} placeholder="Optional description of this RAG project"></textarea>
                 </div>
 
-                <h4 className="section-title">📊 Vector Database (where embeddings are stored)</h4>
+                <h4 className="section-title"><Database size={20} weight="duotone" /> Vector Database (where embeddings are stored)</h4>
 
                 <div className="form-row">
                   <div className="form-group">
@@ -450,7 +466,7 @@ function App() {
                   <small>Will be created automatically</small>
                 </div>
 
-                <h4 className="section-title">🤖 Embedding Model</h4>
+                <h4 className="section-title"><CloudArrowUp size={20} weight="duotone" /> Embedding Model</h4>
 
                 <div className="form-group">
                   <label>Model *</label>
@@ -493,14 +509,14 @@ function App() {
                     onClick={(e) => { e.stopPropagation(); handleEditProject(project); }}
                     title="Edit project"
                   >
-                    ✏️
+                    <PencilSimple size={18} weight="bold" />
                   </button>
                   <button
                     className="btn-icon btn-danger"
                     onClick={(e) => { e.stopPropagation(); setConfirmDelete({type: 'project', id: project.id, name: project.name}); }}
                     title="Delete project"
                   >
-                    🗑️
+                    <Trash size={18} weight="bold" />
                   </button>
                 </div>
               </div>
@@ -552,7 +568,7 @@ function App() {
           <div className="section-header">
             <h2>Data Sources</h2>
             <button onClick={() => setShowCreateSource(true)} className="btn-primary">
-              + New Source
+              <Plus size={18} weight="bold" /> New Source
             </button>
           </div>
 
@@ -579,15 +595,14 @@ function App() {
                   {sourceType === 'sparql' && (
                     <>
                       <div className="form-group">
-                        <label>SPARQL Endpoint URL *</label>
+                        <label>SPARQL Endpoint URL</label>
                         <input
                           type="url"
                           name="sparql_endpoint"
-                          placeholder="https://datos.bcn.cl/es/endpoint-sparql"
-                          defaultValue="https://datos.bcn.cl/es/endpoint-sparql"
-                          required
+                          placeholder="https://datos.bcn.cl/sparql"
+                          defaultValue="https://datos.bcn.cl/sparql"
                         />
-                        <small>Example: Chilean Library of Congress SPARQL endpoint</small>
+                        <small>Chilean Library of Congress SPARQL endpoint (default: https://datos.bcn.cl/sparql)</small>
                       </div>
                       <div className="form-group">
                         <label>SPARQL Query (Optional)</label>
@@ -686,14 +701,14 @@ function App() {
                       className="btn-primary btn-small"
                       disabled={!source.is_active}
                     >
-                      ▶ Run Ingestion
+                      <Play size={16} weight="fill" /> Run Ingestion
                     </button>
                     <button
                       onClick={() => setConfirmDelete({type: 'source', id: source.id, name: source.name})}
                       className="btn-icon btn-danger"
                       title="Delete source"
                     >
-                      🗑️
+                      <Trash size={18} weight="bold" />
                     </button>
                   </div>
                 </div>
@@ -770,7 +785,7 @@ function App() {
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal modal-small" onClick={(e) => e.stopPropagation()}>
-            <h3>⚠️ Confirm Deletion</h3>
+            <h3><Warning size={24} weight="fill" color="#f59e0b" /> Confirm Deletion</h3>
             <p>Are you sure you want to delete <strong>{confirmDelete.name}</strong>?</p>
             {confirmDelete.type === 'project' && (
               <p className="warning-text">This will delete all associated data sources, jobs, and tracking data. This action cannot be undone.</p>
