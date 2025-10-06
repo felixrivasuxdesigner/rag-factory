@@ -55,7 +55,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: rag-worker
-    command: ["python", "-m", "rq.cli", "worker", "--url", "redis://redis:6379/0", "rag-tasks"]
+    command: ["python", "-m", "rq.cli", "worker", "--url", "redis://redis:6379/0", "--worker-ttl", "360", "rag-tasks"]
     depends_on:
       - db
       - redis

@@ -16,6 +16,7 @@ from connectors.sparql_connector import SparqlConnector
 from connectors.chile_full_text_connector import ChileFullTextConnector
 from connectors.congress_full_text_connector import CongressFullTextConnector
 from processors.document_processor import DocumentProcessor
+from processors.adaptive_chunker import AdaptiveChunker
 from core.database import get_db_connection
 
 logging.basicConfig(level=logging.INFO)
@@ -183,6 +184,11 @@ def ingest_documents_from_source(
             embedding_dimension=embedding_config['dimension']
         )
 
+        # Initialize adaptive chunker
+        adaptive_chunker = AdaptiveChunker(
+            overlap=embedding_config.get('chunk_overlap', 200)
+        )
+
         # Check Ollama health
         if not embedding_service.health_check():
             raise RuntimeError("Ollama service is not available")
@@ -229,23 +235,28 @@ def ingest_documents_from_source(
                     successful += 1
                     continue
 
-                # Chunk the content
-                chunks = embedding_service.chunk_text(
-                    content,
-                    chunk_size=embedding_config.get('chunk_size', 1000),
-                    chunk_overlap=embedding_config.get('chunk_overlap', 200)
+                # Use adaptive chunking based on document size
+                # This automatically selects optimal strategy (none, standard, recursive, multi_level)
+                doc_for_chunking = {
+                    'id': doc.get('id'),
+                    'content': content,
+                    'metadata': doc.get('metadata', {})
+                }
+
+                chunk_dicts = adaptive_chunker.chunk_document(
+                    doc_for_chunking,
+                    chunk_size=embedding_config.get('chunk_size', 1000)
                 )
 
                 # Generate embeddings for chunks
                 chunk_embeddings = []
-                for chunk in chunks:
-                    embedding = embedding_service.generate_embedding(chunk['text'])
+                for chunk_dict in chunk_dicts:
+                    embedding = embedding_service.generate_embedding(chunk_dict['content'])
                     if embedding:
-                        # Build metadata including country/region from source
+                        # Build metadata from chunk and document
                         metadata = {
                             **doc,
-                            'chunk_index': chunk['chunk_index'],
-                            'total_chunks': len(chunks),
+                            **chunk_dict['metadata'],  # Includes chunking_strategy, chunk_index, etc.
                             'content_hash': content_hash,
                             'source_id': source_id
                         }
@@ -259,14 +270,16 @@ def ingest_documents_from_source(
                             metadata['tags'] = source_config['tags']
 
                         chunk_embeddings.append({
-                            'id': f"{doc.get('id')}_chunk_{chunk['chunk_index']}",
-                            'content': chunk['text'],
+                            'id': chunk_dict['id'],  # Already has format: doc_id_chunk_N
+                            'content': chunk_dict['content'],
                             'embedding': embedding,
                             'metadata': metadata
                         })
+                    else:
+                        logger.warning(f"Failed to generate embedding for chunk {chunk_dict['id']}")
 
                 if not chunk_embeddings:
-                    raise ValueError("Failed to generate embeddings")
+                    raise ValueError("Failed to generate any embeddings for document")
 
                 # Insert into user's vector DB
                 writer.insert_vectors(chunk_embeddings)
