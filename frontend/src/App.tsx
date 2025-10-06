@@ -640,44 +640,135 @@ function App() {
                     )}
                   </div>
 
-                  {/* SPARQL Configuration */}
+                  {/* Examples Section */}
+                  {(sourceType === 'sparql' || sourceType === 'rest_api') && (
+                    <details style={{marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e1e4e8'}}>
+                      <summary style={{cursor: 'pointer', fontWeight: 600, color: '#0366d6', marginBottom: '10px'}}>
+                        📚 Example Configurations
+                      </summary>
+
+                      {sourceType === 'sparql' && (
+                        <div style={{marginTop: '15px'}}>
+                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>Chile BCN Legal Norms</h4>
+                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace', marginBottom: '15px'}}>
+                            <div><strong>Endpoint:</strong> https://datos.bcn.cl/sparql</div>
+                            <div style={{marginTop: '8px'}}><strong>Query:</strong></div>
+                            <pre style={{margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px'}}>
+{`PREFIX bcnnorms: <http://datos.bcn.cl/ontologies/bcn-norms#>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+
+SELECT DISTINCT ?id ?title ?date
+WHERE {
+  ?norma dc:identifier ?id .
+  ?norma dc:title ?title .
+  ?norma bcnnorms:publishDate ?date .
+  {date_filter}
+}
+ORDER BY DESC(?date)
+OFFSET {offset}
+LIMIT {limit}`}
+                            </pre>
+                            <div style={{marginTop: '8px'}}><strong>Field Mapping:</strong> id_field=id, title_field=title, content_fields=title</div>
+                          </div>
+
+                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>Wikidata Example</h4>
+                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace'}}>
+                            <div><strong>Endpoint:</strong> https://query.wikidata.org/sparql</div>
+                            <div style={{marginTop: '8px'}}><strong>Query:</strong></div>
+                            <pre style={{margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px'}}>
+{`SELECT ?id ?title ?description
+WHERE {
+  ?id wdt:P31 wd:Q5 .
+  ?id rdfs:label ?title .
+  ?id schema:description ?description .
+  FILTER(LANG(?title) = "en")
+}
+OFFSET {offset}
+LIMIT {limit}`}
+                            </pre>
+                            <div style={{marginTop: '8px'}}><strong>Field Mapping:</strong> id_field=id, title_field=title, content_fields=description</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {sourceType === 'rest_api' && (
+                        <div style={{marginTop: '15px'}}>
+                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>US Congress API</h4>
+                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace', marginBottom: '15px'}}>
+                            <div><strong>Base URL:</strong> https://api.congress.gov/v3</div>
+                            <div><strong>Endpoint:</strong> /bill/119</div>
+                            <div><strong>Method:</strong> GET</div>
+                            <div><strong>Auth Type:</strong> api_key</div>
+                            <div><strong>API Key:</strong> DEMO_KEY (or register for your own)</div>
+                            <div style={{marginTop: '8px'}}><strong>URL Parameters:</strong> limit_param=limit, offset_param=offset</div>
+                            <div><strong>Response Path:</strong> bills</div>
+                            <div><strong>Field Mapping:</strong> id_field=number, title_field=title, content_field=title</div>
+                          </div>
+
+                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>Generic JSON API</h4>
+                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace'}}>
+                            <div><strong>Base URL:</strong> https://api.example.com</div>
+                            <div><strong>Endpoint:</strong> /v1/documents</div>
+                            <div><strong>Method:</strong> GET</div>
+                            <div><strong>Custom Headers:</strong></div>
+                            <pre style={{margin: '4px 0', fontSize: '12px'}}>
+{`{
+  "Accept": "application/json",
+  "User-Agent": "RAGFactory/1.0"
+}`}
+                            </pre>
+                            <div style={{marginTop: '8px'}}><strong>Response Path:</strong> data.results</div>
+                            <div><strong>Field Mapping:</strong> Adjust based on your API's response structure</div>
+                          </div>
+                        </div>
+                      )}
+                    </details>
+                  )}
+
+                  {/* Generic SPARQL Configuration */}
                   {sourceType === 'sparql' && (
                     <>
                       <div className="form-group">
-                        <label>SPARQL Endpoint URL</label>
+                        <label>SPARQL Endpoint URL *</label>
                         <input
                           type="url"
-                          name="sparql_endpoint"
-                          placeholder="https://datos.bcn.cl/sparql"
-                          defaultValue="https://datos.bcn.cl/sparql"
+                          name="endpoint"
+                          placeholder="https://query.wikidata.org/sparql"
+                          required
                         />
-                        <small>Chilean Library of Congress SPARQL endpoint (default: https://datos.bcn.cl/sparql)</small>
+                        <small>Any public SPARQL endpoint (Wikidata, DBpedia, government data, etc.)</small>
                       </div>
                       <div className="form-group">
-                        <label>SPARQL Query (Optional)</label>
+                        <label>SPARQL Query Template *</label>
                         <textarea
-                          name="sparql_query"
-                          rows={6}
-                          placeholder="Leave empty to use default query or paste your custom SPARQL query here"
+                          name="query"
+                          rows={10}
+                          placeholder={'SELECT ?id ?title ?content ?date\nWHERE {\n  ?item wdt:P31 wd:Q5 .\n  ?item rdfs:label ?title .\n  BIND(?title AS ?content)\n  {date_filter}\n}\nOFFSET {offset}\nLIMIT {limit}'}
+                          required
                         ></textarea>
-                        <small>If empty, will use default query to fetch documents</small>
+                        <small>Use placeholders: &#123;limit&#125;, &#123;offset&#125;, &#123;date_filter&#125; for pagination and filtering</small>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>ID Field</label>
+                          <input type="text" name="id_field" defaultValue="id" placeholder="id" />
+                          <small>SPARQL variable name for document ID</small>
+                        </div>
+                        <div className="form-group">
+                          <label>Title Field</label>
+                          <input type="text" name="title_field" defaultValue="title" placeholder="title" />
+                          <small>SPARQL variable name for title</small>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>Content Fields (comma-separated)</label>
+                        <input type="text" name="content_fields" defaultValue="content" placeholder="content,description" />
+                        <small>SPARQL variables to combine for document content</small>
                       </div>
                       <div className="form-group">
                         <label>Document Limit</label>
                         <input type="number" name="limit" defaultValue="25" min="1" max="1000" />
-                        <small>Maximum number of documents to fetch per sync</small>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Country Code (Optional)</label>
-                          <input type="text" name="country_code" placeholder="CL" maxLength={2} />
-                          <small>ISO 3166-1 alpha-2 (e.g., CL, US, AR)</small>
-                        </div>
-                        <div className="form-group">
-                          <label>Region (Optional)</label>
-                          <input type="text" name="region" placeholder="Santiago" />
-                          <small>State, province, or region name</small>
-                        </div>
+                        <small>Maximum documents per sync</small>
                       </div>
                     </>
                   )}
@@ -700,17 +791,97 @@ function App() {
                   {sourceType === 'rest_api' && (
                     <>
                       <div className="form-group">
-                        <label>API URL *</label>
-                        <input type="url" name="api_url" placeholder="https://api.example.com/documents" required />
+                        <label>Base URL *</label>
+                        <input type="url" name="base_url" placeholder="https://api.example.com" required />
+                        <small>Base URL of the REST API (without endpoint path)</small>
                       </div>
                       <div className="form-group">
-                        <label>HTTP Method</label>
-                        <select name="api_method">
-                          <option value="GET">GET</option>
-                          <option value="POST">POST</option>
-                        </select>
+                        <label>Endpoint Path *</label>
+                        <input type="text" name="endpoint" placeholder="/v1/documents" required />
+                        <small>API endpoint path (e.g., /v1/documents, /api/items)</small>
                       </div>
-                      <p className="help-text">⚠️ REST API source type is coming soon</p>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>HTTP Method</label>
+                          <select name="method">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Authentication Type</label>
+                          <select name="auth_type">
+                            <option value="">None</option>
+                            <option value="api_key">API Key</option>
+                            <option value="bearer">Bearer Token</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>API Key / Token</label>
+                        <input type="text" name="api_key" placeholder="your-api-key-here" />
+                        <small>Required if authentication type is selected</small>
+                      </div>
+                      <div className="form-group">
+                        <label>Custom Headers (JSON)</label>
+                        <textarea
+                          name="headers"
+                          rows={3}
+                          placeholder={'{\n  "Accept": "application/json",\n  "User-Agent": "RAGFactory/1.0"\n}'}
+                        ></textarea>
+                        <small>Optional custom HTTP headers in JSON format</small>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Limit Parameter</label>
+                          <input type="text" name="limit_param" defaultValue="limit" placeholder="limit" />
+                          <small>URL param for pagination limit</small>
+                        </div>
+                        <div className="form-group">
+                          <label>Offset Parameter</label>
+                          <input type="text" name="offset_param" defaultValue="offset" placeholder="offset" />
+                          <small>URL param for pagination offset</small>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>Date Filter Parameter</label>
+                        <input type="text" name="date_param" placeholder="updated_since" />
+                        <small>Optional: URL param for date filtering (ISO format)</small>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Response Data Path</label>
+                          <input type="text" name="data_path" defaultValue="data" placeholder="data.results" />
+                          <small>JSON path to documents array (e.g., "data", "results", "items")</small>
+                        </div>
+                        <div className="form-group">
+                          <label>ID Field</label>
+                          <input type="text" name="id_field" defaultValue="id" placeholder="id" />
+                          <small>JSON field for document ID</small>
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Title Field</label>
+                          <input type="text" name="title_field" defaultValue="title" placeholder="title" />
+                          <small>JSON field for document title</small>
+                        </div>
+                        <div className="form-group">
+                          <label>Content Field</label>
+                          <input type="text" name="content_field" defaultValue="content" placeholder="content" />
+                          <small>JSON field for document content</small>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>Date Field</label>
+                        <input type="text" name="date_field" placeholder="updated_at" />
+                        <small>Optional: JSON field for document timestamp</small>
+                      </div>
+                      <div className="form-group">
+                        <label>Document Limit</label>
+                        <input type="number" name="limit" defaultValue="25" min="1" max="1000" />
+                        <small>Maximum documents per sync</small>
+                      </div>
                     </>
                   )}
 
