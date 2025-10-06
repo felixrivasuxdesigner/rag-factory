@@ -55,7 +55,19 @@ interface DataSource {
   config: any
 }
 
-type SourceType = 'sparql' | 'file_upload' | 'rest_api'
+interface Connector {
+  name: string
+  source_type: string
+  description: string
+  version: string
+  author: string
+  category: string
+  supports_incremental_sync: boolean
+  supports_rate_limiting: boolean
+  required_config_fields: string[]
+  optional_config_fields: string[]
+  default_rate_limit_preset: string | null
+}
 
 function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null)
@@ -63,12 +75,13 @@ function App() {
   const [selectedProject, setSelectedProject] = useState<number | null>(null)
   const [stats, setStats] = useState<ProjectStats | null>(null)
   const [sources, setSources] = useState<DataSource[]>([])
+  const [connectors, setConnectors] = useState<Connector[]>([])
   const [loading, setLoading] = useState(false)
   const [showCreateProject, setShowCreateProject] = useState(false)
   const [showEditProject, setShowEditProject] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [showCreateSource, setShowCreateSource] = useState(false)
-  const [sourceType, setSourceType] = useState<SourceType>('file_upload')
+  const [sourceType, setSourceType] = useState<string>('sparql')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{type: 'project' | 'source', id: number, name: string} | null>(null)
@@ -76,6 +89,7 @@ function App() {
   useEffect(() => {
     checkHealth()
     loadProjects()
+    loadConnectors()
   }, [])
 
   useEffect(() => {
@@ -129,6 +143,21 @@ function App() {
       setSources(data)
     } catch (error) {
       console.error('Failed to load sources:', error)
+    }
+  }
+
+  const loadConnectors = async () => {
+    try {
+      const response = await fetch(`${API_URL}/connectors?category=public`)
+      const data = await response.json()
+      setConnectors(data.connectors || [])
+
+      // Set first connector as default if available
+      if (data.connectors && data.connectors.length > 0) {
+        setSourceType(data.connectors[0].source_type)
+      }
+    } catch (error) {
+      console.error('Failed to load connectors:', error)
     }
   }
 
@@ -593,11 +622,22 @@ function App() {
 
                   <div className="form-group">
                     <label>Source Type *</label>
-                    <select value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)} required>
-                      <option value="sparql">SPARQL Endpoint</option>
-                      <option value="file_upload">File Upload / JSON Documents</option>
-                      <option value="rest_api">REST API (Coming Soon)</option>
+                    <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} required>
+                      {connectors.length === 0 ? (
+                        <option value="">Loading connectors...</option>
+                      ) : (
+                        connectors.map(connector => (
+                          <option key={connector.source_type} value={connector.source_type}>
+                            {connector.name}
+                          </option>
+                        ))
+                      )}
                     </select>
+                    {connectors.find(c => c.source_type === sourceType)?.description && (
+                      <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
+                        {connectors.find(c => c.source_type === sourceType)?.description}
+                      </small>
+                    )}
                   </div>
 
                   {/* SPARQL Configuration */}
