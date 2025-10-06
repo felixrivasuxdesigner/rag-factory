@@ -201,3 +201,42 @@ class ConnectionTestResponse(BaseModel):
     success: bool
     message: str
     pgvector_available: bool = False
+
+
+# Search and Query Models
+class SearchRequest(BaseModel):
+    project_id: int
+    query: str = Field(..., min_length=1, description="Search query text")
+    top_k: int = Field(5, ge=1, le=50, description="Number of results to return")
+    similarity_threshold: float = Field(0.0, ge=0.0, le=1.0, description="Minimum similarity score")
+
+
+class SearchResult(BaseModel):
+    id: str
+    content: str
+    metadata: Optional[Dict]
+    similarity: float
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: List[SearchResult]
+    total_results: int
+    project_id: int
+
+
+class RAGQueryRequest(BaseModel):
+    project_id: int
+    question: str = Field(..., min_length=1, description="Question to answer using RAG")
+    top_k: int = Field(5, ge=1, le=20, description="Number of context documents")
+    similarity_threshold: float = Field(0.3, ge=0.0, le=1.0, description="Minimum similarity for context")
+    model: str = Field("gemma3:1b-it-qat", description="LLM model to use for generation")
+    max_tokens: int = Field(500, ge=50, le=2000, description="Maximum tokens in response")
+
+
+class RAGQueryResponse(BaseModel):
+    question: str
+    answer: str
+    sources: List[SearchResult]
+    model: str
+    project_id: int

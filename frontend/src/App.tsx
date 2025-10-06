@@ -13,6 +13,7 @@ import {
   Info,
   Warning
 } from '@phosphor-icons/react'
+import SearchPanel from './components/SearchPanel'
 import './App.css'
 
 const API_URL = 'http://localhost:8000'
@@ -361,6 +362,14 @@ function App() {
 
       {error && <div className="alert alert-error">{error} <button onClick={() => setError(null)}>×</button></div>}
       {success && <div className="alert alert-success">{success}</div>}
+
+      {/* Search/RAG Panel */}
+      {selectedProject && projects.find(p => p.id === selectedProject) && (
+        <SearchPanel
+          projectId={selectedProject}
+          projectName={projects.find(p => p.id === selectedProject)!.name}
+        />
+      )}
 
       {/* Health Status */}
       <section className="health-section">

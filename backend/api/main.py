@@ -19,10 +19,15 @@ from api.models import (
     DataSourceCreate, DataSourceUpdate, DataSourceResponse,
     IngestionJobCreate, IngestionJobResponse,
     DocumentTrackingResponse, ProjectStats,
-    DatabaseConnectionTest, ConnectionTestResponse
+    DatabaseConnectionTest, ConnectionTestResponse,
+    SearchRequest, SearchResponse, SearchResult,
+    RAGQueryRequest, RAGQueryResponse
 )
 from core.database import get_db_connection
 from services.vector_db_writer import VectorDBWriter
+from services.search_service import SearchService
+from services.embedding_service import EmbeddingService
+from services.llm_service import LLMService
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -44,6 +49,12 @@ app.add_middleware(
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 redis_conn = Redis.from_url(REDIS_URL)
 task_queue = Queue('rag-tasks', connection=redis_conn)
+
+# Initialize services
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:password@localhost:5432/rag_factory_db')
+embedding_service = EmbeddingService()
+search_service = SearchService(embedding_service=embedding_service)
+llm_service = LLMService(model="gemma3:1b-it-qat")
 
 
 # ============================================================================
@@ -577,6 +588,138 @@ def list_project_jobs(project_id: int, status_filter: str = None, limit: int = 5
 
     finally:
         conn.close()
+
+
+# ============================================================================
+# Search and RAG Query Endpoints
+# ============================================================================
+
+@app.post("/search", response_model=SearchResponse)
+def search_documents(request: SearchRequest):
+    """
+    Perform semantic similarity search on project documents.
+
+    Args:
+        request: SearchRequest with project_id, query, top_k, similarity_threshold
+
+    Returns:
+        SearchResponse with matching documents and similarity scores
+    """
+    try:
+        logger.info(f"Search request: project={request.project_id}, query='{request.query[:50]}...'")
+
+        # Perform search using project configuration
+        results = search_service.search_by_project(
+            query=request.query,
+            project_id=request.project_id,
+            internal_db_url=DATABASE_URL,
+            top_k=request.top_k,
+            similarity_threshold=request.similarity_threshold
+        )
+
+        # Convert to response format
+        search_results = [
+            SearchResult(
+                id=r['id'],
+                content=r['content'],
+                metadata=r.get('metadata'),
+                similarity=r['similarity']
+            )
+            for r in results
+        ]
+
+        return SearchResponse(
+            query=request.query,
+            results=search_results,
+            total_results=len(search_results),
+            project_id=request.project_id
+        )
+
+    except Exception as e:
+        logger.error(f"Search failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/query", response_model=RAGQueryResponse)
+def rag_query(request: RAGQueryRequest):
+    """
+    Perform full RAG query: search for relevant context + generate answer using LLM.
+
+    Args:
+        request: RAGQueryRequest with project_id, question, parameters
+
+    Returns:
+        RAGQueryResponse with generated answer and source documents
+    """
+    try:
+        logger.info(f"RAG query: project={request.project_id}, question='{request.question[:50]}...'")
+
+        # Step 1: Search for relevant context documents
+        context_results = search_service.search_by_project(
+            query=request.question,
+            project_id=request.project_id,
+            internal_db_url=DATABASE_URL,
+            top_k=request.top_k,
+            similarity_threshold=request.similarity_threshold
+        )
+
+        if not context_results:
+            logger.warning("No relevant documents found for query")
+            return RAGQueryResponse(
+                question=request.question,
+                answer="I couldn't find any relevant information in the knowledge base to answer your question.",
+                sources=[],
+                model=request.model,
+                project_id=request.project_id
+            )
+
+        # Convert to SearchResult format
+        sources = [
+            SearchResult(
+                id=r['id'],
+                content=r['content'],
+                metadata=r.get('metadata'),
+                similarity=r['similarity']
+            )
+            for r in context_results
+        ]
+
+        # Step 2: Generate answer using LLM with context
+        # Update LLM service model if different from default
+        if request.model != llm_service.model:
+            temp_llm = LLMService(model=request.model)
+        else:
+            temp_llm = llm_service
+
+        answer = temp_llm.generate_with_context(
+            question=request.question,
+            context_documents=context_results,
+            max_tokens=request.max_tokens
+        )
+
+        if not answer:
+            logger.error("LLM failed to generate answer")
+            return RAGQueryResponse(
+                question=request.question,
+                answer="I encountered an error while generating the answer. Please try again.",
+                sources=sources,
+                model=request.model,
+                project_id=request.project_id
+            )
+
+        logger.info(f"Successfully generated RAG answer ({len(answer)} chars)")
+
+        return RAGQueryResponse(
+            question=request.question,
+            answer=answer,
+            sources=sources,
+            model=request.model,
+            project_id=request.project_id
+        )
+
+    except Exception as e:
+        logger.error(f"RAG query failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================

@@ -55,31 +55,63 @@
 - ✅ Tested: 5 normas chilenas ingresadas exitosamente (IDs: 632434, 632435, 635226, etc.)
 - ✅ Verified: Embeddings 1024d generados y almacenados en `chile_norms_vectors`
 
+## Completado en esta sesión (2025-10-06 - Noche)
+### ✅ **RAG COMPLETO END-TO-END FUNCIONANDO**
+- ✅ Implementado servicio de búsqueda semántica (search_service.py)
+- ✅ Implementado servicio LLM para generación (llm_service.py)
+- ✅ Descargado modelo Gemma 3 (gemma3:1b-it-qat, 1.0 GB)
+- ✅ Endpoint POST /search para búsqueda por similitud (cosine similarity)
+- ✅ Endpoint POST /query para RAG completo (búsqueda + generación)
+- ✅ UI frontend con panel de búsqueda y RAG queries
+- ✅ Toggle entre modo "Search" y "Ask AI"
+- ✅ Favicon personalizado con ícono Factory
+- ✅ Tests exitosos con normas chilenas
+
+### Ejemplo de uso RAG:
+```bash
+# Búsqueda semántica
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{"project_id": 5, "query": "security installations", "top_k": 3}'
+
+# RAG Query (búsqueda + AI generación)
+curl -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": 5,
+    "question": "What is the regulation about production installations?",
+    "top_k": 3,
+    "model": "gemma3:1b-it-qat",
+    "max_tokens": 400
+  }'
+```
+
+### Resultado de prueba:
+**Pregunta:** "What is the regulation about production and security installations?"
+**Respuesta:** "The regulation is about modification of the regulation for safety of installations and operations of production and refinement, transport, storage, distribution and supply of liquid combustible."
+**Fuentes:** 3 documentos con similitud >65%
+
 ## Pendiente para próxima sesión
 
-### 1. Testing Completo del Sistema
-- [x] Probar flujo completo desde UI
-- [x] Crear proyecto con SPARQL (Chilean BCN endpoint)
-- [x] Ejecutar job de ingesta con datos reales
-- [x] Verificar vectores en base de datos
-- [x] Probar edición de proyectos
-- [x] Probar eliminación con confirmación
+### 1. Mejoras de RAG
+- [ ] Agregar streaming de respuestas para mejor UX
+- [ ] Implementar caché de embeddings para queries frecuentes
+- [ ] Agregar re-ranking de resultados
+- [ ] Experimentar con chunking strategies (semantic chunking)
+- [ ] Probar modelo Gemma 3 4B para mejores respuestas
 
-### 2. Búsqueda de Similitud (Opcional)
-- [ ] Implementar endpoint de búsqueda semántica
-- [ ] Probar consultas de similitud con vectores almacenados
-- [ ] Agregar UI para búsqueda en frontend
-
-### 3. Mejoras Futuras
+### 2. Mejoras del Sistema
 - [ ] WebSocket para progreso de jobs en tiempo real
 - [ ] Soporte para más tipos de sources (REST API, web scraping)
 - [ ] Autenticación y multi-usuario
 - [ ] Programación de syncs automáticos
+- [ ] Dashboard con analytics de queries
 
-### 4. Documentación
-- [ ] Actualizar README con instrucciones de uso
-- [ ] Documentar ejemplos de uso con curl
-- [ ] Agregar troubleshooting común
+### 3. Documentación
+- [ ] Actualizar README con RAG capabilities
+- [ ] Documentar arquitectura RAG
+- [ ] Agregar ejemplos de queries
+- [ ] Video demo del sistema completo
 
 ## Comandos útiles
 
