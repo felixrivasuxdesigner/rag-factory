@@ -8,6 +8,7 @@ import requests
 import xml.etree.ElementTree as ET
 from SPARQLWrapper import SPARQLWrapper, JSON
 from typing import List, Dict, Optional
+from services.rate_limiter import RateLimiter, RateLimitConfig, get_preset_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,16 +19,35 @@ class ChileFullTextConnector:
     Fetches Chilean norms with full text content from BCN SPARQL + LeyChile XML.
     """
 
-    def __init__(self, sparql_endpoint: str = "https://datos.bcn.cl/sparql"):
+    def __init__(
+        self,
+        sparql_endpoint: str = "https://datos.bcn.cl/sparql",
+        rate_limit_config: Optional[Dict] = None
+    ):
         """
         Initialize connector.
 
         Args:
             sparql_endpoint: BCN SPARQL endpoint URL
+            rate_limit_config: Rate limiting config dict (preset name or full config)
         """
         self.sparql_endpoint = sparql_endpoint
         self.sparql = SPARQLWrapper(sparql_endpoint)
         self.sparql.agent = "Mozilla/5.0 (compatible; RAGFactory/1.0)"
+
+        # Initialize rate limiter
+        if rate_limit_config:
+            if 'preset' in rate_limit_config:
+                # Use preset config
+                config = get_preset_config(rate_limit_config['preset'])
+            else:
+                # Use custom config
+                config = RateLimitConfig(**rate_limit_config)
+        else:
+            # Default to conservative Chile config
+            config = get_preset_config('chile_bcn_conservative')
+
+        self.rate_limiter = RateLimiter(config, source_name="Chile BCN")
 
     def execute_sparql(self, query: str) -> List[Dict]:
         """Execute SPARQL query and return results."""
@@ -76,8 +96,24 @@ class ChileFullTextConnector:
         xml_url = f"http://www.leychile.cl/Consulta/obtxml?opt=7&idNorma={leychile_code}"
 
         try:
+            # Wait if necessary to respect rate limits
+            wait_time = self.rate_limiter.wait_if_needed()
+            if wait_time > 0:
+                logger.info(f"⏱️  Rate limit wait: {wait_time:.1f}s")
+
             logger.info(f"Fetching XML from LeyChile: {leychile_code}")
             response = requests.get(xml_url, timeout=15)
+
+            # Record the request
+            self.rate_limiter.record_request()
+
+            # Handle 429 (rate limit) response
+            if response.status_code == 429:
+                retry_after = response.headers.get('Retry-After')
+                retry_after_int = int(retry_after) if retry_after else None
+                self.rate_limiter.record_429_response(retry_after_int)
+                logger.warning(f"⚠️  429 Rate limit hit, backing off...")
+                return None
 
             if response.status_code != 200:
                 logger.warning(f"XML fetch failed with status {response.status_code}")

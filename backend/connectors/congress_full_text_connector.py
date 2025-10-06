@@ -7,7 +7,7 @@ import logging
 import requests
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Optional
-import time
+from services.rate_limiter import RateLimiter, RateLimitConfig, get_preset_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,12 +18,17 @@ class CongressFullTextConnector:
     Fetches US Congress bills with full text content from Congress.gov API.
     """
 
-    def __init__(self, api_key: str = "DEMO_KEY"):
+    def __init__(
+        self,
+        api_key: str = "DEMO_KEY",
+        rate_limit_config: Optional[Dict] = None
+    ):
         """
         Initialize connector.
 
         Args:
             api_key: Congress.gov API key (default uses DEMO_KEY with rate limits)
+            rate_limit_config: Rate limiting config dict (preset name or full config)
         """
         self.api_key = api_key
         self.base_url = "https://api.congress.gov/v3"
@@ -32,17 +37,52 @@ class CongressFullTextConnector:
             'User-Agent': 'RAGFactory/1.0 (Educational Project)'
         })
 
+        # Initialize rate limiter
+        if rate_limit_config:
+            if 'preset' in rate_limit_config:
+                # Use preset config
+                config = get_preset_config(rate_limit_config['preset'])
+            else:
+                # Use custom config
+                config = RateLimitConfig(**rate_limit_config)
+        else:
+            # Default based on API key
+            if api_key == "DEMO_KEY":
+                config = get_preset_config('congress_api_demo')
+            else:
+                config = get_preset_config('congress_api_registered')
+
+        self.rate_limiter = RateLimiter(config, source_name="Congress API")
+
     def _api_request(self, url: str) -> Optional[Dict]:
         """Make API request with error handling and rate limiting."""
         try:
+            # Wait if necessary to respect rate limits
+            wait_time = self.rate_limiter.wait_if_needed()
+            if wait_time > 0:
+                logger.info(f"⏱️  Rate limit wait: {wait_time:.1f}s")
+
             response = self.session.get(url, timeout=15)
 
-            if response.status_code == 429:  # Rate limited
-                logger.warning("Rate limited, waiting 60 seconds...")
-                time.sleep(60)
+            # Record the request
+            self.rate_limiter.record_request()
+
+            # Handle 429 (rate limit) response
+            if response.status_code == 429:
+                retry_after = response.headers.get('Retry-After')
+                retry_after_int = int(retry_after) if retry_after else None
+                self.rate_limiter.record_429_response(retry_after_int)
+                logger.warning(f"⚠️  429 Rate limit hit, backing off...")
+                # Retry after backoff
+                wait_time = self.rate_limiter.wait_if_needed()
+                if wait_time > 0:
+                    logger.info(f"⏱️  Backoff wait: {wait_time:.1f}s")
                 response = self.session.get(url, timeout=15)
+                self.rate_limiter.record_request()
 
             if response.status_code == 200:
+                # Reset 429 counter on success
+                self.rate_limiter.record_success()
                 return response.json()
             else:
                 logger.error(f"API request failed: {response.status_code}")
@@ -231,10 +271,6 @@ class CongressFullTextConnector:
 
             enriched_bills.append(document)
             logger.info(f"✓ {bill_id}: {len(content)} chars")
-
-            # Rate limiting: wait between requests
-            if self.api_key == "DEMO_KEY":
-                time.sleep(2)  # Be nice to the DEMO_KEY
 
         logger.info(f"✓ Fetched {len(enriched_bills)} bills with content")
         return enriched_bills

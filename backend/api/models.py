@@ -99,6 +99,7 @@ class DataSourceCreate(BaseModel):
     region: Optional[str] = Field(None, max_length=100, description="Region/state (e.g., 'California', 'Santiago')")
     tags: Optional[Dict] = Field(None, description="Additional flexible tags (e.g., {'jurisdiction': 'federal', 'language': 'es'})")
     sync_frequency: str = "manual"
+    rate_limits: Optional[Dict] = Field(None, description="Rate limiting config or preset name (e.g., {'preset': 'chile_bcn_conservative'} or full config)")
 
 
 class DataSourceUpdate(BaseModel):
@@ -109,6 +110,7 @@ class DataSourceUpdate(BaseModel):
     tags: Optional[Dict] = None
     sync_frequency: Optional[str] = None
     is_active: Optional[bool] = None
+    rate_limits: Optional[Dict] = None
 
 
 class DataSourceResponse(BaseModel):
@@ -122,6 +124,7 @@ class DataSourceResponse(BaseModel):
     tags: Optional[Dict]
     sync_frequency: str
     is_active: bool
+    rate_limits: Optional[Dict]
     last_sync_at: Optional[datetime]
     next_sync_at: Optional[datetime]
     created_at: datetime
