@@ -11,7 +11,7 @@
 - ✅ **User's own database**: Embeddings en la BD del usuario, no vendor lock-in
 - ✅ **Production-ready**: Job queue, deduplicación, tracking, error handling
 
-## 📊 Estado Actual (v0.3 - Connector Architecture Complete)
+## 📊 Estado Actual (v0.4 - Connector Ecosystem Expansion)
 
 ### ✅ Core Features Implemented
 - [x] Multi-project management (CRUD)
@@ -42,10 +42,13 @@
 - [x] **Chile BCN Example** - Pre-configured SPARQL connector
 - [x] **US Congress Example** - Pre-configured REST API connector
 
-### ✅ Current Connectors (4 Total)
+### ✅ Current Connectors (7 Total)
 **Public (Generic):**
 - [x] `sparql` - Generic SPARQL Endpoint
 - [x] `rest_api` - Generic REST API
+- [x] `file_upload` - File Upload (PDF, DOCX, TXT, MD, JSON, CSV)
+- [x] `web_scraper` - Web Scraper (BeautifulSoup4, CSS selectors)
+- [x] `rss_feed` - RSS/Atom Feed (feedparser, auto-discovery)
 
 **Example (Pre-configured):**
 - [x] `chile_bcn` - Chile BCN Legal Norms
@@ -97,11 +100,15 @@
    - [x] Rate limiting per domain
    - [x] Category: public
 
-3. **RSS/Atom Feed Connector** (MEDIUM PRIORITY)
-   - [ ] Feed parsing (feedparser)
-   - [ ] Auto-discovery of feeds
-   - [ ] Periodic sync support
-   - [ ] Category: public
+3. **RSS/Atom Feed Connector** ✅ COMPLETED
+   - [x] Feed parsing (feedparser)
+   - [x] Auto-discovery of feeds from web pages
+   - [x] Support for RSS 2.0, RSS 1.0, Atom
+   - [x] Content extraction (title, content, summary, author, date)
+   - [x] Incremental sync based on publication dates
+   - [x] HTML tag cleaning from feed content
+   - [x] Rate limiting support
+   - [x] Category: public
 
 4. **GitHub Connector** (MEDIUM PRIORITY)
    - [ ] Repository README, docs, wikis
