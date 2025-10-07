@@ -42,7 +42,7 @@
 - [x] **Chile BCN Example** - Pre-configured SPARQL connector
 - [x] **US Congress Example** - Pre-configured REST API connector
 
-### ✅ Current Connectors (8 Total)
+### ✅ Current Connectors (9 Total)
 **Public (Generic):**
 - [x] `sparql` - Generic SPARQL Endpoint
 - [x] `rest_api` - Generic REST API
@@ -50,6 +50,7 @@
 - [x] `web_scraper` - Web Scraper (BeautifulSoup4, CSS selectors)
 - [x] `rss_feed` - RSS/Atom Feed (feedparser, auto-discovery)
 - [x] `github` - GitHub Repository (README, issues, PRs, code)
+- [x] `google_drive` - Google Drive (Docs, Sheets, PDFs, OAuth2)
 
 **Example (Pre-configured):**
 - [x] `chile_bcn` - Chile BCN Legal Norms
@@ -122,12 +123,18 @@
    - [x] File size validation for code files
    - [x] Category: public
 
-5. **Google Drive Connector** (LOWER PRIORITY - OAuth complex)
-   - [ ] OAuth2 authentication
-   - [ ] Google Docs, Sheets (export as text)
-   - [ ] PDFs in Drive
-   - [ ] Folder selection
-   - [ ] Category: public
+5. **Google Drive Connector** ✅ COMPLETED
+   - [x] OAuth2 and Service Account authentication
+   - [x] Google Docs (export as plain text)
+   - [x] Google Sheets (export as CSV)
+   - [x] PDF files
+   - [x] Text and Markdown files
+   - [x] Folder selection (folder_id or root)
+   - [x] Recursive folder scanning
+   - [x] Incremental sync based on modifiedTime
+   - [x] File size validation
+   - [x] Rate limiting support
+   - [x] Category: public
 
 6. **Notion Connector** (LOWER PRIORITY - OAuth complex)
    - [ ] Notion API v1
