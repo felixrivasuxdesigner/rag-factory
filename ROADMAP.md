@@ -80,14 +80,14 @@
 
 **Priority Connectors** (implementar en orden):
 
-1. **File Upload Connector** (HIGHEST PRIORITY)
-   - [ ] PDF files (PyPDF2/pdfplumber)
-   - [ ] DOCX files (python-docx)
-   - [ ] TXT/MD files (plain text)
-   - [ ] CSV/JSON files (structured data)
-   - [ ] Batch upload support
-   - [ ] File size validation
-   - [ ] Category: public
+1. **File Upload Connector** ✅ COMPLETED
+   - [x] PDF files (PyPDF2/pdfplumber)
+   - [x] DOCX files (python-docx)
+   - [x] TXT/MD files (plain text)
+   - [x] CSV/JSON files (structured data)
+   - [x] Batch upload support
+   - [x] File size validation
+   - [x] Category: public
 
 2. **Web Scraper Connector** (HIGH PRIORITY)
    - [ ] URL fetching with BeautifulSoup

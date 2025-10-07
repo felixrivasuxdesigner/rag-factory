@@ -6,3 +6,6 @@ requests
 rq
 redis
 python-multipart
+PyPDF2
+python-docx
+pdfplumber
