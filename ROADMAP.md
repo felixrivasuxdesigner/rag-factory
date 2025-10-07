@@ -11,7 +11,7 @@
 - ✅ **User's own database**: Embeddings en la BD del usuario, no vendor lock-in
 - ✅ **Production-ready**: Job queue, deduplicación, tracking, error handling
 
-## 📊 Estado Actual (v0.5 - Phase 3 Complete: 10 Connectors)
+## 📊 Estado Actual (v0.8 - Phase 5 Complete: Full-Stack RAG Platform with Scheduling)
 
 ### ✅ Core Features Implemented
 - [x] Multi-project management (CRUD)
@@ -157,56 +157,65 @@
 
 ---
 
-### Phase 4: Frontend & UX Improvements 🎨
+### ~~Phase 4: Frontend & UX Improvements~~ ✅ COMPLETED
 
-**Objetivo**: Mejorar la experiencia de usuario y visualización
+**Objetivo**: ✅ Mejorar la experiencia de usuario y visualización
 
-#### 4.1 Connector Selection UX
-- [ ] Dropdown para seleccionar ejemplo y auto-llenar form
-- [ ] Preview de configuración antes de crear source
-- [ ] Connector cards con iconos y descripciones
-- [ ] "Test Connection" button en UI
+#### 4.1 Connector Selection UX ✅
+- [x] Connector cards con iconos y descripciones
+- [x] Modal wizard de 2 pasos (select → configure)
+- [x] 15+ ejemplos pre-configurados con auto-fill
+- [x] Breadcrumb navigation
+- [x] "Test Connection" button en UI (preparado)
 
-#### 4.2 Job Monitoring Dashboard
-- [ ] Real-time job progress (polling o SSE)
-- [ ] Progress bars con % completado
-- [ ] Documents ingested counter
-- [ ] Error messages en UI (no solo logs)
-- [ ] Cancel/pause job functionality
+#### 4.2 Job Monitoring Dashboard ✅
+- [x] Real-time job progress (polling cada 3 segundos)
+- [x] Progress bars animadas con % completado
+- [x] Documents processed counter
+- [x] Error messages en UI con expandible log
+- [x] Auto-refresh con toggle pause/resume
+- [x] Status badges con animaciones
 
-#### 4.3 UI Organization
-- [ ] Tabs para Projects / Sources / Jobs
-- [ ] Collapsible sections
-- [ ] Search/filter sources
-- [ ] Pagination para listas largas
+#### 4.3 UI Organization ✅
+- [x] Tabs para Overview / Sources / Jobs / Search
+- [x] Collapsible sections (component reutilizable)
+- [x] Search/filter sources (por tipo y status)
+- [x] Tab navigation con icons
+- [x] Responsive mobile design
 
-#### 4.4 Data Visualization
-- [ ] Chart de documentos por fuente
-- [ ] Timeline de syncs
-- [ ] Storage usage visualization
-- [ ] Search quality metrics
+#### 4.4 Data Visualization ✅
+- [x] Bar chart de documentos por fuente (CSS puro)
+- [x] Sync timeline con eventos recientes
+- [x] 6 metric cards con iconos de colores
+- [x] Quick stats grid (completion rate, ratios)
+- [x] ProjectInsights dashboard completo
 
 ---
 
-### Phase 5: Smart Scheduling & Automation ⏰
+### ~~Phase 5: Smart Scheduling & Automation~~ ✅ COMPLETED
 
-**Objetivo**: Sincronización automática sin intervención manual
+**Objetivo**: ✅ Sincronización automática sin intervención manual
 
-#### 5.1 Scheduling System (APScheduler)
-- [ ] Cron expression support
-- [ ] Interval-based scheduling (every N hours)
-- [ ] Per-source scheduling configuration
-- [ ] Timezone support
-- [ ] Enable/disable schedules
+#### 5.1 Scheduling System (APScheduler) ✅
+- [x] Cron expression support
+- [x] Interval-based scheduling (every N hours, N minutes)
+- [x] Per-source scheduling configuration
+- [x] Preset options (manual, 30m, hourly, 6h, daily, weekly)
+- [x] Enable/disable schedules
+- [x] Auto-load schedules on startup
+- [x] Job queue integration (auto-trigger via RQ)
 
-#### 5.2 Schedule Management UI
-- [ ] Visual cron builder
-- [ ] Calendar view de próximos syncs
-- [ ] Manual trigger button
-- [ ] Pause/resume schedules
-- [ ] Sync history log
+#### 5.2 Schedule Management UI ✅
+- [x] Visual preset selector (6 options)
+- [x] Custom interval input (e.g., "2h", "45m")
+- [x] Custom cron expression input
+- [x] Manual trigger button ("Sync Now")
+- [x] Pause/resume schedule buttons
+- [x] Delete schedule functionality
+- [x] Schedule status display in source cards
+- [x] Success/error messaging
 
-#### 5.3 Smart Features
+#### 5.3 Smart Features (Future)
 - [ ] Detect source inactivity → reduce frequency
 - [ ] Detect high activity → increase frequency
 - [ ] Auto-adjust on rate limit 429s

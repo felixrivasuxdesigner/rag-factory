@@ -1,6 +1,6 @@
 # Next Steps for RAG Factory
 
-## Current Status (Actualizado: 2025-10-06 - Madrugada)
+## Current Status (Actualizado: 2025-10-07 - Phase 5 Complete)
 ✅ **MVP COMPLETO - Backend + Frontend Funcionando**
 ✅ Infraestructura Docker configurada (PostgreSQL:5433, Redis:6380, Ollama:11434, API:8000, Frontend:3000)
 ✅ Base de datos inicializada con schema completo
@@ -161,26 +161,133 @@ Incluye: Resolución completa con RUT (Nº86.381.300-K), fecha, detalles legales
 - `c2bc90c` - feat: Add full-text connectors for Chile BCN and USA Congress
 - `3def6ec` - fix: Optimize RAG similarity search and increase embedding timeout
 
+## Completado en esta sesión (2025-10-07 - Phase 4 & 5)
+
+### ✅ Phase 4: Frontend & UX Improvements (COMPLETADO)
+
+**4.1 Connector Selection UX** ✅
+- ✅ [ConnectorCard.tsx](frontend/src/components/ConnectorCard.tsx) - Visual cards con iconos Phosphor
+- ✅ [CreateSourceModal.tsx](frontend/src/components/CreateSourceModal.tsx) - Wizard 2 pasos
+- ✅ [exampleConfigs.ts](frontend/src/utils/exampleConfigs.ts) - 15+ ejemplos pre-configurados
+- ✅ Breadcrumb navigation
+- ✅ Auto-fill desde ejemplos
+
+**4.2 Job Monitoring Dashboard** ✅
+- ✅ [JobMonitor.tsx](frontend/src/components/JobMonitor.tsx) - Real-time polling (3s)
+- ✅ Progress bars animadas con % completado
+- ✅ Status badges (running, completed, failed, pending)
+- ✅ Error logs expandibles
+- ✅ Auto-refresh con toggle pause/resume
+
+**4.3 UI Organization** ✅
+- ✅ [TabNavigation.tsx](frontend/src/components/TabNavigation.tsx) - 4 tabs (Overview, Sources, Jobs, Search)
+- ✅ [SourceFilters.tsx](frontend/src/components/SourceFilters.tsx) - Search + filtros por tipo/status
+- ✅ [CollapsibleSection.tsx](frontend/src/components/CollapsibleSection.tsx) - Componente reutilizable
+- ✅ Client-side filtering logic
+- ✅ Responsive design
+
+**4.4 Data Visualization** ✅
+- ✅ [BarChart.tsx](frontend/src/components/BarChart.tsx) - Pure CSS bar chart
+- ✅ [MetricCard.tsx](frontend/src/components/MetricCard.tsx) - 5 color variants
+- ✅ [SyncTimeline.tsx](frontend/src/components/SyncTimeline.tsx) - Timeline con timestamps relativos
+- ✅ [ProjectInsights.tsx](frontend/src/components/ProjectInsights.tsx) - Dashboard completo (240 líneas)
+- ✅ 6 metric cards con iconos
+- ✅ Quick stats grid
+
+### ✅ Phase 5: Smart Scheduling & Automation (COMPLETADO)
+
+**5.1 Scheduling System** ✅
+- ✅ [scheduler_service.py](backend/services/scheduler_service.py) (282 líneas)
+  - APScheduler BackgroundScheduler integration
+  - Parse presets, intervals, cron expressions
+  - Auto-load schedules on startup
+  - Pause/resume functionality
+  - Job queue integration
+
+**5.2 Schedule Management UI** ✅
+- ✅ [ScheduleManager.tsx](frontend/src/components/ScheduleManager.tsx) (232 líneas)
+  - 6 preset options (manual, 30m, hourly, 6h, daily, weekly)
+  - Custom interval input (e.g., "2h", "45m")
+  - Custom cron expression input
+  - Control buttons (Update, Trigger, Pause, Resume, Delete)
+  - Success/error messaging
+- ✅ [API endpoints](backend/api/main.py) (+161 líneas):
+  - GET /schedules
+  - POST /sources/{id}/schedule
+  - POST /sources/{id}/schedule/pause
+  - POST /sources/{id}/schedule/resume
+  - DELETE /sources/{id}/schedule
+  - POST /sources/{id}/sync/trigger
+- ✅ Integrated into source cards in [App.tsx](frontend/src/App.tsx)
+- ✅ Schedule badge display
+
+### Archivos Modificados/Creados:
+**Frontend (12 nuevos componentes + refactor App.tsx):**
+- `frontend/src/components/ConnectorCard.tsx`
+- `frontend/src/components/CreateSourceModal.tsx`
+- `frontend/src/components/JobMonitor.tsx`
+- `frontend/src/components/TabNavigation.tsx`
+- `frontend/src/components/SourceFilters.tsx`
+- `frontend/src/components/CollapsibleSection.tsx`
+- `frontend/src/components/BarChart.tsx`
+- `frontend/src/components/MetricCard.tsx`
+- `frontend/src/components/SyncTimeline.tsx`
+- `frontend/src/components/ProjectInsights.tsx`
+- `frontend/src/components/ScheduleManager.tsx`
+- `frontend/src/utils/exampleConfigs.ts`
+- `frontend/src/App.tsx` (refactorizado con tabs + scheduling)
+- `frontend/src/App.css` (+1000 líneas de nuevos estilos)
+
+**Backend (scheduler + API):**
+- `backend/services/scheduler_service.py` (nuevo, 282 líneas)
+- `backend/api/main.py` (+161 líneas, 6 endpoints)
+- `backend/requirements.txt` (+1 línea: APScheduler)
+
+### Commits:
+- `908cc2c` - feat: Phase 4.3 - UI Organization & Navigation
+- `103020c` - feat: Phase 4.2 - Job Monitoring Dashboard
+- `41f81c8` - feat: Phase 4.1 - Implement Connector Selection UX
+- (Phase 4.4 y 5.1/5.2 pendientes de commit)
+
 ## Pendiente para próxima sesión
 
-### 1. Mejoras de RAG
+### 1. Testing Completo (PRIORITY)
+- [ ] Probar Phase 4 features:
+  - [ ] Connector selection wizard (todos los tipos)
+  - [ ] Job monitoring con polling real-time
+  - [ ] Tab navigation y filtros
+  - [ ] Visualizaciones con datos reales
+- [ ] Probar Phase 5 scheduling:
+  - [ ] Crear schedule con cada preset
+  - [ ] Crear schedule con interval custom
+  - [ ] Crear schedule con cron expression
+  - [ ] Verificar que jobs se triggeren automáticamente
+  - [ ] Probar pause/resume
+  - [ ] Probar delete schedule
+  - [ ] Verificar auto-load schedules on restart
+- [ ] Documentar bugs encontrados
+
+### 2. Mejoras de RAG
 - [ ] Agregar streaming de respuestas para mejor UX
 - [ ] Implementar caché de embeddings para queries frecuentes
 - [ ] Agregar re-ranking de resultados
 - [ ] Experimentar con chunking strategies (semantic chunking)
 - [ ] Probar modelo Gemma 3 4B para mejores respuestas
 
-### 2. Mejoras del Sistema
+### 3. Mejoras del Sistema
 - [ ] WebSocket para progreso de jobs en tiempo real
-- [ ] Soporte para más tipos de sources (REST API, web scraping)
 - [ ] Autenticación y multi-usuario
-- [ ] Programación de syncs automáticos
 - [ ] Dashboard con analytics de queries
+- [ ] Smart scheduling features (5.3):
+  - [ ] Detect source inactivity → reduce frequency
+  - [ ] Detect high activity → increase frequency
+  - [ ] Auto-adjust on rate limit 429s
+  - [ ] Email/webhook notifications
 
-### 3. Documentación
-- [ ] Actualizar README con RAG capabilities
-- [ ] Documentar arquitectura RAG
-- [ ] Agregar ejemplos de queries
+### 4. Documentación Adicional
+- [ ] Actualizar README con Phase 4 & 5 screenshots
+- [ ] Documentar scheduling system
+- [ ] Agregar guía de uso de presets vs custom schedules
 - [ ] Video demo del sistema completo
 
 ## Comandos útiles
