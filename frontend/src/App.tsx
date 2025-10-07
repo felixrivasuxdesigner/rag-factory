@@ -19,6 +19,7 @@ import JobMonitor from './components/JobMonitor'
 import TabNavigation from './components/TabNavigation'
 import type { TabType } from './components/TabNavigation'
 import SourceFilters from './components/SourceFilters'
+import ProjectInsights from './components/ProjectInsights'
 import './App.css'
 
 const API_URL = 'http://localhost:8000'
@@ -687,6 +688,11 @@ function App() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* Project Insights & Visualizations */}
+      {selectedProject && (
+        <ProjectInsights projectId={selectedProject} />
       )}
         </div>
       )}
