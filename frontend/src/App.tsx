@@ -16,6 +16,9 @@ import {
 import SearchPanel from './components/SearchPanel'
 import CreateSourceModal from './components/CreateSourceModal'
 import JobMonitor from './components/JobMonitor'
+import TabNavigation from './components/TabNavigation'
+import type { TabType } from './components/TabNavigation'
+import SourceFilters from './components/SourceFilters'
 import './App.css'
 
 const API_URL = 'http://localhost:8000'
@@ -86,6 +89,12 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{type: 'project' | 'source', id: number, name: string} | null>(null)
+
+  // Phase 4.3: Tab and Filter states
+  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const [sourceSearchQuery, setSourceSearchQuery] = useState('')
+  const [sourceTypeFilter, setSourceTypeFilter] = useState('')
+  const [sourceStatusFilter, setSourceStatusFilter] = useState('')
 
   useEffect(() => {
     checkHealth()
@@ -433,6 +442,32 @@ function App() {
       : <XCircle size={24} weight="fill" className="text-red-500" />
   }
 
+  // Phase 4.3: Filter sources based on search and filters
+  const filteredSources = sources.filter(source => {
+    // Search filter
+    if (sourceSearchQuery && !source.name.toLowerCase().includes(sourceSearchQuery.toLowerCase())) {
+      return false
+    }
+
+    // Type filter
+    if (sourceTypeFilter && source.source_type !== sourceTypeFilter) {
+      return false
+    }
+
+    // Status filter
+    if (sourceStatusFilter === 'active' && !source.is_active) {
+      return false
+    }
+    if (sourceStatusFilter === 'inactive' && source.is_active) {
+      return false
+    }
+
+    return true
+  })
+
+  // Get unique source types for filter dropdown
+  const availableSourceTypes = Array.from(new Set(sources.map(s => s.source_type)))
+
   return (
     <div className="app">
       <header className="header">
@@ -443,13 +478,16 @@ function App() {
       {error && <div className="alert alert-error">{error} <button onClick={() => setError(null)}>×</button></div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Search/RAG Panel */}
-      {selectedProject && projects.find(p => p.id === selectedProject) && (
-        <SearchPanel
-          projectId={selectedProject}
-          projectName={projects.find(p => p.id === selectedProject)!.name}
-        />
-      )}
+      {/* Tab Navigation */}
+      <TabNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        projectSelected={!!selectedProject}
+      />
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="tab-content">
 
       {/* Health Status */}
       <section className="health-section">
@@ -650,17 +688,32 @@ function App() {
           </div>
         </section>
       )}
-
-      {/* Job Monitoring Dashboard */}
-      {selectedProject && (
-        <JobMonitor
-          projectId={selectedProject}
-          onJobComplete={() => loadProjectStats(selectedProject)}
-        />
+        </div>
       )}
 
-      {/* Data Sources */}
-      {selectedProject && (
+      {/* Jobs Tab */}
+      {activeTab === 'jobs' && selectedProject && (
+        <div className="tab-content">
+          <JobMonitor
+            projectId={selectedProject}
+            onJobComplete={() => loadProjectStats(selectedProject)}
+          />
+        </div>
+      )}
+
+      {/* Search & Query Tab */}
+      {activeTab === 'search' && selectedProject && projects.find(p => p.id === selectedProject) && (
+        <div className="tab-content">
+          <SearchPanel
+            projectId={selectedProject}
+            projectName={projects.find(p => p.id === selectedProject)!.name}
+          />
+        </div>
+      )}
+
+      {/* Data Sources Tab */}
+      {activeTab === 'sources' && selectedProject && (
+        <div className="tab-content">
         <section className="sources-section">
           <div className="section-header">
             <h2>Data Sources</h2>
@@ -677,9 +730,22 @@ function App() {
             />
           )}
 
-          {sources.length > 0 ? (
+          {/* Source Filters */}
+          {sources.length > 0 && (
+            <SourceFilters
+              searchQuery={sourceSearchQuery}
+              onSearchChange={setSourceSearchQuery}
+              typeFilter={sourceTypeFilter}
+              onTypeFilterChange={setSourceTypeFilter}
+              availableTypes={availableSourceTypes}
+              statusFilter={sourceStatusFilter}
+              onStatusFilterChange={setSourceStatusFilter}
+            />
+          )}
+
+          {filteredSources.length > 0 ? (
             <div className="sources-list">
-              {sources.map((source) => (
+              {filteredSources.map((source) => (
                 <div key={source.id} className="source-card">
                   <div className="source-header">
                     <h4>{source.name}</h4>
@@ -721,7 +787,10 @@ function App() {
             </div>
           )}
         </section>
+        </div>
       )}
+
+      {/* Modals - Always available */}
 
       {/* Edit Project Modal */}
       {showEditProject && editingProject && (
