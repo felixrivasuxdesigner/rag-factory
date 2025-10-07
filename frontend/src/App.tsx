@@ -15,6 +15,7 @@ import {
 } from '@phosphor-icons/react'
 import SearchPanel from './components/SearchPanel'
 import CreateSourceModal from './components/CreateSourceModal'
+import JobMonitor from './components/JobMonitor'
 import './App.css'
 
 const API_URL = 'http://localhost:8000'
@@ -648,6 +649,14 @@ function App() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* Job Monitoring Dashboard */}
+      {selectedProject && (
+        <JobMonitor
+          projectId={selectedProject}
+          onJobComplete={() => loadProjectStats(selectedProject)}
+        />
       )}
 
       {/* Data Sources */}
