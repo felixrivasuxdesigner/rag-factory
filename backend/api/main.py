@@ -29,6 +29,7 @@ from services.search_service import SearchService
 from services.embedding_service import EmbeddingService
 from services.llm_service import LLMService
 from connectors.registry import get_registry
+from services import scheduler_service
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -835,6 +836,166 @@ def test_database_connection(db_config: DatabaseConnectionTest):
             success=False,
             message=str(e)
         )
+
+
+# ============================================================================
+# SCHEDULING ENDPOINTS (Phase 5)
+# ============================================================================
+
+@app.get("/schedules")
+def list_schedules():
+    """List all active schedules with next run times."""
+    try:
+        jobs = scheduler_service.get_scheduled_jobs()
+        return {"schedules": jobs}
+    except Exception as e:
+        logger.error(f"Failed to list schedules: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/sources/{source_id}/schedule")
+def update_source_schedule(source_id: int, sync_frequency: str):
+    """
+    Update the schedule for a data source.
+
+    Supported formats:
+    - "manual" - No scheduling
+    - "hourly" - Every hour
+    - "daily" - Every day at midnight
+    - "weekly" - Every Monday at midnight
+    - "interval:30m" - Every 30 minutes
+    - "interval:2h" - Every 2 hours
+    - "cron:0 0 * * *" - Cron expression
+    """
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Update database
+            cur.execute("""
+                UPDATE data_sources
+                SET sync_frequency = %s
+                WHERE id = %s
+                RETURNING name;
+            """, (sync_frequency, source_id))
+
+            result = cur.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Source not found")
+
+            source_name = result[0]
+            conn.commit()
+
+            # Update scheduler
+            if sync_frequency == "manual":
+                scheduler_service.remove_source_schedule(source_id)
+                return {"message": "Schedule removed", "source_id": source_id}
+            else:
+                success = scheduler_service.add_source_schedule(
+                    source_id, source_name, sync_frequency
+                )
+                if success:
+                    return {
+                        "message": "Schedule updated",
+                        "source_id": source_id,
+                        "sync_frequency": sync_frequency
+                    }
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid sync_frequency format"
+                    )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to update schedule: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.post("/sources/{source_id}/schedule/pause")
+def pause_source_schedule(source_id: int):
+    """Pause a source's schedule without removing it."""
+    try:
+        success = scheduler_service.pause_schedule(source_id)
+        if success:
+            return {"message": "Schedule paused", "source_id": source_id}
+        else:
+            raise HTTPException(status_code=404, detail="Schedule not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to pause schedule: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/sources/{source_id}/schedule/resume")
+def resume_source_schedule(source_id: int):
+    """Resume a paused source schedule."""
+    try:
+        success = scheduler_service.resume_schedule(source_id)
+        if success:
+            return {"message": "Schedule resumed", "source_id": source_id}
+        else:
+            raise HTTPException(status_code=404, detail="Schedule not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resume schedule: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/sources/{source_id}/schedule")
+def delete_source_schedule(source_id: int):
+    """Remove a source's schedule."""
+    try:
+        success = scheduler_service.remove_source_schedule(source_id)
+        if success:
+            return {"message": "Schedule removed", "source_id": source_id}
+        else:
+            return {"message": "No schedule to remove", "source_id": source_id}
+    except Exception as e:
+        logger.error(f"Failed to remove schedule: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/sources/{source_id}/sync/trigger")
+def manually_trigger_sync(source_id: int):
+    """Manually trigger a sync job for a source (bypasses schedule)."""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT name FROM data_sources WHERE id = %s", (source_id,))
+            result = cur.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Source not found")
+
+            source_name = result[0]
+
+        # Trigger sync job
+        scheduler_service.trigger_sync_job(source_id, source_name)
+
+        return {
+            "message": "Sync job triggered",
+            "source_id": source_id,
+            "source_name": source_name
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to trigger sync: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

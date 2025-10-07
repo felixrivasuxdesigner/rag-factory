@@ -1790,3 +1790,153 @@ button:disabled {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Phase 5: Smart Scheduling & Automation Styles */
+.schedule-manager {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border: 2px solid #e5e7eb;
+}
+
+.schedule-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  color: #667eea;
+}
+
+.schedule-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1f2937;
+}
+
+.schedule-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.schedule-message.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.schedule-message.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.schedule-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.preset-option {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-option:hover {
+  border-color: #667eea;
+  background: #f9fafb;
+}
+
+.preset-option input[type="radio"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.preset-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.preset-label {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.preset-description {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.custom-input {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.custom-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.custom-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.schedule-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.schedule-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.schedule-badge.paused {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.schedule-badge.manual {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .schedule-actions {
+    flex-direction: column;
+  }
+
+  .schedule-actions button {
+    width: 100%;
+  }
+}

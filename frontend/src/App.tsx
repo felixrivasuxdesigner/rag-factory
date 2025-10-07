@@ -11,7 +11,8 @@ import {
   Plus,
   Play,
   Info,
-  Warning
+  Warning,
+  Clock
 } from '@phosphor-icons/react'
 import SearchPanel from './components/SearchPanel'
 import CreateSourceModal from './components/CreateSourceModal'
@@ -20,6 +21,7 @@ import TabNavigation from './components/TabNavigation'
 import type { TabType } from './components/TabNavigation'
 import SourceFilters from './components/SourceFilters'
 import ProjectInsights from './components/ProjectInsights'
+import ScheduleManager from './components/ScheduleManager'
 import './App.css'
 
 const API_URL = 'http://localhost:8000'
@@ -59,6 +61,7 @@ interface DataSource {
   source_type: string
   is_active: boolean
   config: any
+  sync_frequency?: string
 }
 
 interface Connector {
@@ -96,6 +99,9 @@ function App() {
   const [sourceSearchQuery, setSourceSearchQuery] = useState('')
   const [sourceTypeFilter, setSourceTypeFilter] = useState('')
   const [sourceStatusFilter, setSourceStatusFilter] = useState('')
+
+  // Phase 5: Scheduling state
+  const [scheduleOpen, setScheduleOpen] = useState<number | null>(null)
 
   useEffect(() => {
     checkHealth()
@@ -755,9 +761,17 @@ function App() {
                 <div key={source.id} className="source-card">
                   <div className="source-header">
                     <h4>{source.name}</h4>
-                    <span className={`badge ${source.is_active ? 'active' : 'inactive'}`}>
-                      {source.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span className={`badge ${source.is_active ? 'active' : 'inactive'}`}>
+                        {source.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      {source.sync_frequency && source.sync_frequency !== 'manual' && (
+                        <span className="schedule-badge">
+                          <Clock size={12} weight="fill" />
+                          {source.sync_frequency}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="source-meta">
                     <span className="meta-text">Type: {source.source_type}</span>
@@ -774,7 +788,13 @@ function App() {
                       className="btn-primary btn-small"
                       disabled={!source.is_active}
                     >
-                      <Play size={16} weight="fill" /> Run Ingestion
+                      <Play size={16} weight="fill" /> Run Now
+                    </button>
+                    <button
+                      onClick={() => setScheduleOpen(scheduleOpen === source.id ? null : source.id)}
+                      className="btn-secondary btn-small"
+                    >
+                      <Clock size={16} weight="bold" /> Schedule
                     </button>
                     <button
                       onClick={() => setConfirmDelete({type: 'source', id: source.id, name: source.name})}
@@ -784,6 +804,16 @@ function App() {
                       <Trash size={18} weight="bold" />
                     </button>
                   </div>
+
+                  {/* Schedule Manager */}
+                  {scheduleOpen === source.id && (
+                    <ScheduleManager
+                      sourceId={source.id}
+                      sourceName={source.name}
+                      currentFrequency={source.sync_frequency || 'manual'}
+                      onUpdate={() => loadProjectSources(selectedProject!)}
+                    />
+                  )}
                 </div>
               ))}
             </div>
