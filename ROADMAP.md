@@ -11,7 +11,7 @@
 - ✅ **User's own database**: Embeddings en la BD del usuario, no vendor lock-in
 - ✅ **Production-ready**: Job queue, deduplicación, tracking, error handling
 
-## 📊 Estado Actual (v0.4 - Connector Ecosystem Expansion)
+## 📊 Estado Actual (v0.5 - Phase 3 Complete: 10 Connectors)
 
 ### ✅ Core Features Implemented
 - [x] Multi-project management (CRUD)
@@ -42,7 +42,7 @@
 - [x] **Chile BCN Example** - Pre-configured SPARQL connector
 - [x] **US Congress Example** - Pre-configured REST API connector
 
-### ✅ Current Connectors (9 Total)
+### ✅ Current Connectors (10 Total)
 **Public (Generic):**
 - [x] `sparql` - Generic SPARQL Endpoint
 - [x] `rest_api` - Generic REST API
@@ -51,6 +51,7 @@
 - [x] `rss_feed` - RSS/Atom Feed (feedparser, auto-discovery)
 - [x] `github` - GitHub Repository (README, issues, PRs, code)
 - [x] `google_drive` - Google Drive (Docs, Sheets, PDFs, OAuth2)
+- [x] `notion` - Notion Workspace (pages, databases, Integration Token)
 
 **Example (Pre-configured):**
 - [x] `chile_bcn` - Chile BCN Legal Norms
@@ -136,12 +137,17 @@
    - [x] Rate limiting support
    - [x] Category: public
 
-6. **Notion Connector** (LOWER PRIORITY - OAuth complex)
-   - [ ] Notion API v1
-   - [ ] Pages and databases
-   - [ ] Workspace selection
-   - [ ] OAuth authentication
-   - [ ] Category: public
+6. **Notion Connector** ✅ COMPLETED
+   - [x] Notion API v1 (notion-client library)
+   - [x] Notion pages with full content
+   - [x] Notion databases (query and fetch rows)
+   - [x] Integration Token authentication
+   - [x] Rich text to plain text conversion
+   - [x] Multiple block types support (headings, lists, code, quotes, callouts)
+   - [x] Incremental sync based on last_edited_time
+   - [x] Workspace-wide search
+   - [x] Rate limiting (conservative preset for 3 req/sec)
+   - [x] Category: public
 
 **Connector Template System**:
 - [ ] Create connector template/boilerplate
