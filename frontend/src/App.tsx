@@ -14,6 +14,7 @@ import {
   Warning
 } from '@phosphor-icons/react'
 import SearchPanel from './components/SearchPanel'
+import CreateSourceModal from './components/CreateSourceModal'
 import './App.css'
 
 const API_URL = 'http://localhost:8000'
@@ -81,7 +82,6 @@ function App() {
   const [showEditProject, setShowEditProject] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [showCreateSource, setShowCreateSource] = useState(false)
-  const [sourceType, setSourceType] = useState<string>('sparql')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{type: 'project' | 'source', id: number, name: string} | null>(null)
@@ -151,11 +151,6 @@ function App() {
       const response = await fetch(`${API_URL}/connectors?category=public`)
       const data = await response.json()
       setConnectors(data.connectors || [])
-
-      // Set first connector as default if available
-      if (data.connectors && data.connectors.length > 0) {
-        setSourceType(data.connectors[0].source_type)
-      }
     } catch (error) {
       console.error('Failed to load connectors:', error)
     }
@@ -201,30 +196,83 @@ function App() {
     }
   }
 
-  const createSource = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const createSource = async (sourceType: string, formData: FormData) => {
     if (!selectedProject) return
 
-    const formData = new FormData(e.currentTarget)
+    let config: Record<string, any> = {}
 
-    let config = {}
-
+    // Build config based on source type
     if (sourceType === 'sparql') {
       config = {
-        endpoint: formData.get('sparql_endpoint'),
-        query: formData.get('sparql_query') || 'SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100',
+        endpoint: formData.get('endpoint'),
+        query: formData.get('query'),
+        id_field: formData.get('id_field') || 'id',
+        title_field: formData.get('title_field') || 'title',
+        content_fields: formData.get('content_fields') || 'content',
         limit: parseInt(formData.get('limit') as string) || 25
+      }
+    } else if (sourceType === 'rest_api') {
+      const headersStr = formData.get('headers')
+      config = {
+        base_url: formData.get('base_url'),
+        endpoint: formData.get('endpoint'),
+        method: formData.get('method') || 'GET',
+        auth_type: formData.get('auth_type') || '',
+        api_key: formData.get('api_key') || '',
+        headers: headersStr ? JSON.parse(headersStr as string) : {},
+        limit_param: formData.get('limit_param') || 'limit',
+        offset_param: formData.get('offset_param') || 'offset',
+        date_param: formData.get('date_param') || '',
+        data_path: formData.get('data_path') || 'data',
+        id_field: formData.get('id_field') || 'id',
+        title_field: formData.get('title_field') || 'title',
+        content_field: formData.get('content_field') || 'content',
+        date_field: formData.get('date_field') || '',
+        limit: parseInt(formData.get('limit') as string) || 25
+      }
+    } else if (sourceType === 'rss_feed') {
+      config = {
+        feed_url: formData.get('feed_url'),
+        auto_discover: formData.get('auto_discover') === 'on',
+        limit: parseInt(formData.get('limit') as string) || 50
+      }
+    } else if (sourceType === 'github') {
+      config = {
+        repository: formData.get('repository'),
+        token: formData.get('token') || '',
+        include_readme: formData.get('include_readme') === 'on',
+        include_issues: formData.get('include_issues') === 'on',
+        include_prs: formData.get('include_prs') === 'on',
+        include_code: formData.get('include_code') === 'on',
+        limit: parseInt(formData.get('limit') as string) || 50
+      }
+    } else if (sourceType === 'web_scraper') {
+      config = {
+        start_url: formData.get('start_url'),
+        content_selector: formData.get('content_selector'),
+        title_selector: formData.get('title_selector') || 'h1',
+        max_pages: parseInt(formData.get('max_pages') as string) || 1
+      }
+    } else if (sourceType === 'google_drive') {
+      config = {
+        credentials_json: formData.get('credentials_json'),
+        folder_id: formData.get('folder_id') || '',
+        recursive: formData.get('recursive') === 'on',
+        include_docs: formData.get('include_docs') === 'on',
+        include_sheets: formData.get('include_sheets') === 'on',
+        include_pdfs: formData.get('include_pdfs') === 'on'
+      }
+    } else if (sourceType === 'notion') {
+      config = {
+        token: formData.get('token'),
+        search_query: formData.get('search_query') || '',
+        include_pages: formData.get('include_pages') === 'on',
+        include_databases: formData.get('include_databases') === 'on'
       }
     } else if (sourceType === 'file_upload') {
       const documents = formData.get('documents')
       config = {
         documents: documents ? JSON.parse(documents as string) : []
-      }
-    } else if (sourceType === 'rest_api') {
-      config = {
-        url: formData.get('api_url'),
-        method: formData.get('api_method') || 'GET',
-        headers: {}
       }
     }
 
@@ -253,9 +301,11 @@ function App() {
       } else {
         const errorData = await response.json()
         setError(errorData.detail || 'Failed to create source')
+        throw new Error(errorData.detail || 'Failed to create source')
       }
     } catch (error) {
       setError('Failed to create source')
+      throw error
     }
   }
 
@@ -611,289 +661,11 @@ function App() {
           </div>
 
           {showCreateSource && (
-            <div className="modal-overlay" onClick={() => setShowCreateSource(false)}>
-              <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-                <h3>Create Data Source</h3>
-                <form onSubmit={createSource}>
-                  <div className="form-group">
-                    <label>Source Name *</label>
-                    <input type="text" name="name" placeholder="Chilean Legal Documents" required />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Source Type *</label>
-                    <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} required>
-                      {connectors.length === 0 ? (
-                        <option value="">Loading connectors...</option>
-                      ) : (
-                        connectors.map(connector => (
-                          <option key={connector.source_type} value={connector.source_type}>
-                            {connector.name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    {connectors.find(c => c.source_type === sourceType)?.description && (
-                      <small style={{color: '#666', marginTop: '4px', display: 'block'}}>
-                        {connectors.find(c => c.source_type === sourceType)?.description}
-                      </small>
-                    )}
-                  </div>
-
-                  {/* Examples Section */}
-                  {(sourceType === 'sparql' || sourceType === 'rest_api') && (
-                    <details style={{marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e1e4e8'}}>
-                      <summary style={{cursor: 'pointer', fontWeight: 600, color: '#0366d6', marginBottom: '10px'}}>
-                        📚 Example Configurations
-                      </summary>
-
-                      {sourceType === 'sparql' && (
-                        <div style={{marginTop: '15px'}}>
-                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>Chile BCN Legal Norms</h4>
-                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace', marginBottom: '15px'}}>
-                            <div><strong>Endpoint:</strong> https://datos.bcn.cl/sparql</div>
-                            <div style={{marginTop: '8px'}}><strong>Query:</strong></div>
-                            <pre style={{margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px'}}>
-{`PREFIX bcnnorms: <http://datos.bcn.cl/ontologies/bcn-norms#>
-PREFIX dc: <http://purl.org/dc/elements/1.1/>
-
-SELECT DISTINCT ?id ?title ?date
-WHERE {
-  ?norma dc:identifier ?id .
-  ?norma dc:title ?title .
-  ?norma bcnnorms:publishDate ?date .
-  {date_filter}
-}
-ORDER BY DESC(?date)
-OFFSET {offset}
-LIMIT {limit}`}
-                            </pre>
-                            <div style={{marginTop: '8px'}}><strong>Field Mapping:</strong> id_field=id, title_field=title, content_fields=title</div>
-                          </div>
-
-                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>Wikidata Example</h4>
-                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace'}}>
-                            <div><strong>Endpoint:</strong> https://query.wikidata.org/sparql</div>
-                            <div style={{marginTop: '8px'}}><strong>Query:</strong></div>
-                            <pre style={{margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '12px'}}>
-{`SELECT ?id ?title ?description
-WHERE {
-  ?id wdt:P31 wd:Q5 .
-  ?id rdfs:label ?title .
-  ?id schema:description ?description .
-  FILTER(LANG(?title) = "en")
-}
-OFFSET {offset}
-LIMIT {limit}`}
-                            </pre>
-                            <div style={{marginTop: '8px'}}><strong>Field Mapping:</strong> id_field=id, title_field=title, content_fields=description</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {sourceType === 'rest_api' && (
-                        <div style={{marginTop: '15px'}}>
-                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>US Congress API</h4>
-                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace', marginBottom: '15px'}}>
-                            <div><strong>Base URL:</strong> https://api.congress.gov/v3</div>
-                            <div><strong>Endpoint:</strong> /bill/119</div>
-                            <div><strong>Method:</strong> GET</div>
-                            <div><strong>Auth Type:</strong> api_key</div>
-                            <div><strong>API Key:</strong> DEMO_KEY (or register for your own)</div>
-                            <div style={{marginTop: '8px'}}><strong>URL Parameters:</strong> limit_param=limit, offset_param=offset</div>
-                            <div><strong>Response Path:</strong> bills</div>
-                            <div><strong>Field Mapping:</strong> id_field=number, title_field=title, content_field=title</div>
-                          </div>
-
-                          <h4 style={{fontSize: '14px', fontWeight: 600, marginBottom: '10px'}}>Generic JSON API</h4>
-                          <div style={{backgroundColor: 'white', padding: '12px', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace'}}>
-                            <div><strong>Base URL:</strong> https://api.example.com</div>
-                            <div><strong>Endpoint:</strong> /v1/documents</div>
-                            <div><strong>Method:</strong> GET</div>
-                            <div><strong>Custom Headers:</strong></div>
-                            <pre style={{margin: '4px 0', fontSize: '12px'}}>
-{`{
-  "Accept": "application/json",
-  "User-Agent": "RAGFactory/1.0"
-}`}
-                            </pre>
-                            <div style={{marginTop: '8px'}}><strong>Response Path:</strong> data.results</div>
-                            <div><strong>Field Mapping:</strong> Adjust based on your API's response structure</div>
-                          </div>
-                        </div>
-                      )}
-                    </details>
-                  )}
-
-                  {/* Generic SPARQL Configuration */}
-                  {sourceType === 'sparql' && (
-                    <>
-                      <div className="form-group">
-                        <label>SPARQL Endpoint URL *</label>
-                        <input
-                          type="url"
-                          name="endpoint"
-                          placeholder="https://query.wikidata.org/sparql"
-                          required
-                        />
-                        <small>Any public SPARQL endpoint (Wikidata, DBpedia, government data, etc.)</small>
-                      </div>
-                      <div className="form-group">
-                        <label>SPARQL Query Template *</label>
-                        <textarea
-                          name="query"
-                          rows={10}
-                          placeholder={'SELECT ?id ?title ?content ?date\nWHERE {\n  ?item wdt:P31 wd:Q5 .\n  ?item rdfs:label ?title .\n  BIND(?title AS ?content)\n  {date_filter}\n}\nOFFSET {offset}\nLIMIT {limit}'}
-                          required
-                        ></textarea>
-                        <small>Use placeholders: &#123;limit&#125;, &#123;offset&#125;, &#123;date_filter&#125; for pagination and filtering</small>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>ID Field</label>
-                          <input type="text" name="id_field" defaultValue="id" placeholder="id" />
-                          <small>SPARQL variable name for document ID</small>
-                        </div>
-                        <div className="form-group">
-                          <label>Title Field</label>
-                          <input type="text" name="title_field" defaultValue="title" placeholder="title" />
-                          <small>SPARQL variable name for title</small>
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Content Fields (comma-separated)</label>
-                        <input type="text" name="content_fields" defaultValue="content" placeholder="content,description" />
-                        <small>SPARQL variables to combine for document content</small>
-                      </div>
-                      <div className="form-group">
-                        <label>Document Limit</label>
-                        <input type="number" name="limit" defaultValue="25" min="1" max="1000" />
-                        <small>Maximum documents per sync</small>
-                      </div>
-                    </>
-                  )}
-
-                  {/* File Upload Configuration */}
-                  {sourceType === 'file_upload' && (
-                    <div className="form-group">
-                      <label>Documents (JSON) *</label>
-                      <textarea
-                        name="documents"
-                        rows={10}
-                        placeholder={'[\n  {\n    "id": "doc1",\n    "title": "Document Title",\n    "content": "Full document content goes here..."\n  },\n  {\n    "id": "doc2",\n    "title": "Another Document",\n    "content": "More content..."\n  }\n]'}
-                        required
-                      ></textarea>
-                      <small>Provide an array of documents with id, title, and content fields (JSON format)</small>
-                    </div>
-                  )}
-
-                  {/* REST API Configuration */}
-                  {sourceType === 'rest_api' && (
-                    <>
-                      <div className="form-group">
-                        <label>Base URL *</label>
-                        <input type="url" name="base_url" placeholder="https://api.example.com" required />
-                        <small>Base URL of the REST API (without endpoint path)</small>
-                      </div>
-                      <div className="form-group">
-                        <label>Endpoint Path *</label>
-                        <input type="text" name="endpoint" placeholder="/v1/documents" required />
-                        <small>API endpoint path (e.g., /v1/documents, /api/items)</small>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>HTTP Method</label>
-                          <select name="method">
-                            <option value="GET">GET</option>
-                            <option value="POST">POST</option>
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label>Authentication Type</label>
-                          <select name="auth_type">
-                            <option value="">None</option>
-                            <option value="api_key">API Key</option>
-                            <option value="bearer">Bearer Token</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>API Key / Token</label>
-                        <input type="text" name="api_key" placeholder="your-api-key-here" />
-                        <small>Required if authentication type is selected</small>
-                      </div>
-                      <div className="form-group">
-                        <label>Custom Headers (JSON)</label>
-                        <textarea
-                          name="headers"
-                          rows={3}
-                          placeholder={'{\n  "Accept": "application/json",\n  "User-Agent": "RAGFactory/1.0"\n}'}
-                        ></textarea>
-                        <small>Optional custom HTTP headers in JSON format</small>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Limit Parameter</label>
-                          <input type="text" name="limit_param" defaultValue="limit" placeholder="limit" />
-                          <small>URL param for pagination limit</small>
-                        </div>
-                        <div className="form-group">
-                          <label>Offset Parameter</label>
-                          <input type="text" name="offset_param" defaultValue="offset" placeholder="offset" />
-                          <small>URL param for pagination offset</small>
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Date Filter Parameter</label>
-                        <input type="text" name="date_param" placeholder="updated_since" />
-                        <small>Optional: URL param for date filtering (ISO format)</small>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Response Data Path</label>
-                          <input type="text" name="data_path" defaultValue="data" placeholder="data.results" />
-                          <small>JSON path to documents array (e.g., "data", "results", "items")</small>
-                        </div>
-                        <div className="form-group">
-                          <label>ID Field</label>
-                          <input type="text" name="id_field" defaultValue="id" placeholder="id" />
-                          <small>JSON field for document ID</small>
-                        </div>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Title Field</label>
-                          <input type="text" name="title_field" defaultValue="title" placeholder="title" />
-                          <small>JSON field for document title</small>
-                        </div>
-                        <div className="form-group">
-                          <label>Content Field</label>
-                          <input type="text" name="content_field" defaultValue="content" placeholder="content" />
-                          <small>JSON field for document content</small>
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Date Field</label>
-                        <input type="text" name="date_field" placeholder="updated_at" />
-                        <small>Optional: JSON field for document timestamp</small>
-                      </div>
-                      <div className="form-group">
-                        <label>Document Limit</label>
-                        <input type="number" name="limit" defaultValue="25" min="1" max="1000" />
-                        <small>Maximum documents per sync</small>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="form-actions">
-                    <button type="button" onClick={() => setShowCreateSource(false)} className="btn-secondary">
-                      Cancel
-                    </button>
-                    <button type="submit" className="btn-primary">Create Source</button>
-                  </div>
-                </form>
-              </div>
-            </div>
+            <CreateSourceModal
+              connectors={connectors}
+              onClose={() => setShowCreateSource(false)}
+              onSubmit={createSource}
+            />
           )}
 
           {sources.length > 0 ? (
