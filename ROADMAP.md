@@ -11,7 +11,7 @@
 - ✅ **User's own database**: Embeddings en la BD del usuario, no vendor lock-in
 - ✅ **Production-ready**: Job queue, deduplicación, tracking, error handling
 
-## 📊 Estado Actual (v0.1 - MVP Completado)
+## 📊 Estado Actual (v0.3 - Connector Architecture Complete)
 
 ### ✅ Core Features Implemented
 - [x] Multi-project management (CRUD)
@@ -25,11 +25,31 @@
 - [x] Document tracking in internal DB
 - [x] Vector storage in user's target DB
 
-### ✅ Data Connectors
-- [x] **File Upload** - JSON documents
-- [x] **SPARQL** - Chile BCN endpoint (títulos only)
-- [x] **Chile Full-Text** - BCN SPARQL + LeyChile XML
-- [x] **USA Congress** - Congress.gov API v3 + full bill text
+### ✅ Production Hardening (Phase 1 - COMPLETED)
+- [x] **Smart Chunking** - Adaptive chunking based on document size
+- [x] **Rate Limiting Framework** - Configurable per-source with presets
+- [x] **Incremental Sync** - Date-based filtering, skip processed docs
+- [x] **Retry Logic** - Exponential backoff for API failures
+- [x] **429 Handling** - Automatic retry-after detection
+
+### ✅ Connector Architecture (Phase 2 - COMPLETED)
+- [x] **BaseConnector** - Abstract base class for all connectors
+- [x] **ConnectorRegistry** - Auto-discovery plugin system
+- [x] **Connector Categorization** - public/example/private
+- [x] **Metadata System** - Version, author, config schema
+- [x] **Generic SPARQL Connector** - Universal SPARQL endpoint support
+- [x] **Generic REST API Connector** - Universal JSON API support
+- [x] **Chile BCN Example** - Pre-configured SPARQL connector
+- [x] **US Congress Example** - Pre-configured REST API connector
+
+### ✅ Current Connectors (4 Total)
+**Public (Generic):**
+- [x] `sparql` - Generic SPARQL Endpoint
+- [x] `rest_api` - Generic REST API
+
+**Example (Pre-configured):**
+- [x] `chile_bcn` - Chile BCN Legal Norms
+- [x] `us_congress` - US Congress Bills
 
 ### ✅ Technical Foundation
 - [x] Docker Compose setup
@@ -37,12 +57,144 @@
 - [x] Error logging and job status tracking
 - [x] Configurable chunking (size + overlap)
 - [x] Gemma 3 LLM for generation
+- [x] Frontend dynamic connector loading
+- [x] Frontend example configurations UI
 
 ## 🚀 Roadmap to v1.0 (Community Release)
 
+### ~~Phase 1: Production Hardening~~ ✅ COMPLETED
+
+**Objetivo**: ✅ Sistema robusto y confiable para uso real
+
+### ~~Phase 2: Connector Architecture~~ ✅ COMPLETED
+
+**Objetivo**: ✅ Framework extensible de conectores con auto-discovery
+
+---
+
+## 🎯 Next 3 Phases (Current Focus)
+
+### Phase 3: Additional Data Source Connectors 🔌
+
+**Objetivo**: Expandir el ecosistema de conectores para fuentes de datos populares
+
+**Priority Connectors** (implementar en orden):
+
+1. **File Upload Connector** (HIGHEST PRIORITY)
+   - [ ] PDF files (PyPDF2/pdfplumber)
+   - [ ] DOCX files (python-docx)
+   - [ ] TXT/MD files (plain text)
+   - [ ] CSV/JSON files (structured data)
+   - [ ] Batch upload support
+   - [ ] File size validation
+   - [ ] Category: public
+
+2. **Web Scraper Connector** (HIGH PRIORITY)
+   - [ ] URL fetching with BeautifulSoup
+   - [ ] Configurable CSS selectors
+   - [ ] JavaScript rendering (Playwright/Selenium optional)
+   - [ ] Robots.txt respect
+   - [ ] Rate limiting per domain
+   - [ ] Category: public
+
+3. **RSS/Atom Feed Connector** (MEDIUM PRIORITY)
+   - [ ] Feed parsing (feedparser)
+   - [ ] Auto-discovery of feeds
+   - [ ] Periodic sync support
+   - [ ] Category: public
+
+4. **GitHub Connector** (MEDIUM PRIORITY)
+   - [ ] Repository README, docs, wikis
+   - [ ] Issues and PRs (title + body)
+   - [ ] Discussions
+   - [ ] Code files (optional)
+   - [ ] OAuth or token auth
+   - [ ] Category: public
+
+5. **Google Drive Connector** (LOWER PRIORITY - OAuth complex)
+   - [ ] OAuth2 authentication
+   - [ ] Google Docs, Sheets (export as text)
+   - [ ] PDFs in Drive
+   - [ ] Folder selection
+   - [ ] Category: public
+
+6. **Notion Connector** (LOWER PRIORITY - OAuth complex)
+   - [ ] Notion API v1
+   - [ ] Pages and databases
+   - [ ] Workspace selection
+   - [ ] OAuth authentication
+   - [ ] Category: public
+
+**Connector Template System**:
+- [ ] Create connector template/boilerplate
+- [ ] Documentation: "How to Build a Connector"
+- [ ] Validation script for new connectors
+- [ ] Testing framework for connectors
+
+---
+
+### Phase 4: Frontend & UX Improvements 🎨
+
+**Objetivo**: Mejorar la experiencia de usuario y visualización
+
+#### 4.1 Connector Selection UX
+- [ ] Dropdown para seleccionar ejemplo y auto-llenar form
+- [ ] Preview de configuración antes de crear source
+- [ ] Connector cards con iconos y descripciones
+- [ ] "Test Connection" button en UI
+
+#### 4.2 Job Monitoring Dashboard
+- [ ] Real-time job progress (polling o SSE)
+- [ ] Progress bars con % completado
+- [ ] Documents ingested counter
+- [ ] Error messages en UI (no solo logs)
+- [ ] Cancel/pause job functionality
+
+#### 4.3 UI Organization
+- [ ] Tabs para Projects / Sources / Jobs
+- [ ] Collapsible sections
+- [ ] Search/filter sources
+- [ ] Pagination para listas largas
+
+#### 4.4 Data Visualization
+- [ ] Chart de documentos por fuente
+- [ ] Timeline de syncs
+- [ ] Storage usage visualization
+- [ ] Search quality metrics
+
+---
+
+### Phase 5: Smart Scheduling & Automation ⏰
+
+**Objetivo**: Sincronización automática sin intervención manual
+
+#### 5.1 Scheduling System (APScheduler)
+- [ ] Cron expression support
+- [ ] Interval-based scheduling (every N hours)
+- [ ] Per-source scheduling configuration
+- [ ] Timezone support
+- [ ] Enable/disable schedules
+
+#### 5.2 Schedule Management UI
+- [ ] Visual cron builder
+- [ ] Calendar view de próximos syncs
+- [ ] Manual trigger button
+- [ ] Pause/resume schedules
+- [ ] Sync history log
+
+#### 5.3 Smart Features
+- [ ] Detect source inactivity → reduce frequency
+- [ ] Detect high activity → increase frequency
+- [ ] Auto-adjust on rate limit 429s
+- [ ] Email/webhook notifications on completion
+
+---
+
+## 🔮 Future Phases (Post v1.0)
+
 ### Phase 1: Production Hardening (CRITICAL) 🔥
 
-**Objetivo**: Hacer el sistema robusto y confiable para uso real
+**Objetivo**: ~~Hacer el sistema robusto y confiable para uso real~~
 
 #### 1.1 Smart Chunking & Large Document Handling
 **Problema**: Documentos >5,000 chars causan timeouts en Ollama
