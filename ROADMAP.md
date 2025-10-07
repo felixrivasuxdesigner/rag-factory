@@ -89,13 +89,13 @@
    - [x] File size validation
    - [x] Category: public
 
-2. **Web Scraper Connector** (HIGH PRIORITY)
-   - [ ] URL fetching with BeautifulSoup
-   - [ ] Configurable CSS selectors
-   - [ ] JavaScript rendering (Playwright/Selenium optional)
-   - [ ] Robots.txt respect
-   - [ ] Rate limiting per domain
-   - [ ] Category: public
+2. **Web Scraper Connector** ✅ COMPLETED
+   - [x] URL fetching with BeautifulSoup4
+   - [x] Configurable CSS selectors (content, title, remove)
+   - [ ] JavaScript rendering (Playwright/Selenium optional) - Future
+   - [x] Robots.txt respect
+   - [x] Rate limiting per domain
+   - [x] Category: public
 
 3. **RSS/Atom Feed Connector** (MEDIUM PRIORITY)
    - [ ] Feed parsing (feedparser)

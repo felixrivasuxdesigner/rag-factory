@@ -9,3 +9,6 @@ python-multipart
 PyPDF2
 python-docx
 pdfplumber
+beautifulsoup4
+lxml
+html5lib
