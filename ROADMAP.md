@@ -42,13 +42,14 @@
 - [x] **Chile BCN Example** - Pre-configured SPARQL connector
 - [x] **US Congress Example** - Pre-configured REST API connector
 
-### ✅ Current Connectors (7 Total)
+### ✅ Current Connectors (8 Total)
 **Public (Generic):**
 - [x] `sparql` - Generic SPARQL Endpoint
 - [x] `rest_api` - Generic REST API
 - [x] `file_upload` - File Upload (PDF, DOCX, TXT, MD, JSON, CSV)
 - [x] `web_scraper` - Web Scraper (BeautifulSoup4, CSS selectors)
 - [x] `rss_feed` - RSS/Atom Feed (feedparser, auto-discovery)
+- [x] `github` - GitHub Repository (README, issues, PRs, code)
 
 **Example (Pre-configured):**
 - [x] `chile_bcn` - Chile BCN Legal Norms
@@ -110,13 +111,16 @@
    - [x] Rate limiting support
    - [x] Category: public
 
-4. **GitHub Connector** (MEDIUM PRIORITY)
-   - [ ] Repository README, docs, wikis
-   - [ ] Issues and PRs (title + body)
-   - [ ] Discussions
-   - [ ] Code files (optional)
-   - [ ] OAuth or token auth
-   - [ ] Category: public
+4. **GitHub Connector** ✅ COMPLETED
+   - [x] Repository README and documentation
+   - [x] Issues with comments (title + body + comments)
+   - [x] Pull requests with comments (title + body + comments)
+   - [x] Code files (optional, configurable by extension)
+   - [x] Personal Access Token authentication
+   - [x] Rate limiting (5000/hour with auth, 60/hour without)
+   - [x] Incremental sync based on updated_at timestamps
+   - [x] File size validation for code files
+   - [x] Category: public
 
 5. **Google Drive Connector** (LOWER PRIORITY - OAuth complex)
    - [ ] OAuth2 authentication
