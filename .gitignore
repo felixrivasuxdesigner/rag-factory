@@ -119,3 +119,5 @@ Thumbs.db
 
 # Config files
 *.env
+# Internal documentation and development files
+.claude/internal-docs/
