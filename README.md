@@ -81,8 +81,8 @@ RAG Factory is a **complete platform** for developers, researchers, and teams wh
 
 ```bash
 # Clone, start, and open dashboard
-git clone https://github.com/yourusername/rag-factory.git
-cd rag-factory
+git clone https://github.com/felixrivasuxdesigner/vector-doc-ingestion.git
+cd vector-doc-ingestion
 ./setup.sh
 ```
 
@@ -95,8 +95,8 @@ This script will:
 ### Option 2: Manual Setup
 
 ```bash
-git clone https://github.com/yourusername/rag-factory.git
-cd rag-factory
+git clone https://github.com/felixrivasuxdesigner/vector-doc-ingestion.git
+cd vector-doc-ingestion
 
 # Start all services
 docker-compose -f docker/docker-compose.yml up -d
@@ -344,8 +344,8 @@ We ❤️ contributions! RAG Factory was built with [Claude Code](https://claude
 
 ### Ways to Contribute
 
-- 🐛 **Report bugs** - [Open an issue](https://github.com/yourusername/rag-factory/issues/new?template=bug_report.md)
-- 💡 **Suggest features** - [Request a feature](https://github.com/yourusername/rag-factory/issues/new?template=feature_request.md)
+- 🐛 **Report bugs** - [Open an issue](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/issues/new?template=bug_report.md)
+- 💡 **Suggest features** - [Request a feature](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/issues/new?template=feature_request.md)
 - 🔌 **Build connectors** - Add support for new data sources ([Guide](CONTRIBUTING.md#creating-a-new-connector))
 - 📝 **Improve docs** - Fix typos, add examples, write tutorials
 - 🧪 **Write tests** - Help us reach 100% coverage
@@ -355,8 +355,8 @@ We ❤️ contributions! RAG Factory was built with [Claude Code](https://claude
 
 ```bash
 # Fork the repo, then:
-git clone https://github.com/YOUR_USERNAME/rag-factory.git
-cd rag-factory
+git clone https://github.com/YOUR_USERNAME/vector-doc-ingestion.git
+cd vector-doc-ingestion
 
 # Backend development
 cd backend
@@ -375,7 +375,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ### Good First Issues
 
-Looking for easy tasks to get started? Check out issues labeled [`good-first-issue`](https://github.com/yourusername/rag-factory/labels/good-first-issue):
+Looking for easy tasks to get started? Check out issues labeled [`good-first-issue`](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/labels/good-first-issue):
 
 - Add new connector for popular APIs
 - Improve error messages
@@ -398,9 +398,9 @@ Looking for easy tasks to get started? Check out issues labeled [`good-first-iss
 ## 📞 Support & Community
 
 - 📖 **Documentation**: [API Usage Guide](API_USAGE.md) | [Architecture](CLAUDE.md) | [Roadmap](ROADMAP.md)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/rag-factory/discussions)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/rag-factory/issues)
-- 📧 **Email**: your-email@example.com
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/issues)
+- 📧 **Email**: felix.rivas.ux@gmail.com
 - 🌟 **Star us on GitHub** if you find this useful!
 
 ## 🚀 What's Next?
@@ -408,7 +408,7 @@ Looking for easy tasks to get started? Check out issues labeled [`good-first-iss
 1. **Try it out**: Run `./setup.sh` and explore the dashboard
 2. **Read the docs**: Check out [API_USAGE.md](API_USAGE.md) for examples
 3. **Build a connector**: Follow the [Connector Guide](CONTRIBUTING.md#creating-a-new-connector)
-4. **Join the community**: Share your use case in [Discussions](https://github.com/yourusername/rag-factory/discussions)
+4. **Join the community**: Share your use case in [Discussions](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/discussions)
 
 ## 💼 Use Cases
 

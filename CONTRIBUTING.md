@@ -5,14 +5,14 @@ Thank you for your interest in contributing to RAG Factory! This document provid
 ## 🎯 Ways to Contribute
 
 ### 1. Report Bugs 🐛
-Found a bug? Please [open an issue](https://github.com/yourusername/rag-factory/issues/new?template=bug_report.md) with:
+Found a bug? Please [open an issue](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/issues/new?template=bug_report.md) with:
 - Clear description of the problem
 - Steps to reproduce
 - Expected vs actual behavior
 - Environment details (OS, Docker version, etc.)
 
 ### 2. Suggest Features 💡
-Have an idea? [Open a feature request](https://github.com/yourusername/rag-factory/issues/new?template=feature_request.md) with:
+Have an idea? [Open a feature request](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/issues/new?template=feature_request.md) with:
 - Use case description
 - Expected behavior
 - Why it would benefit the community
@@ -364,9 +364,9 @@ Contributors are recognized in:
 
 ## 📞 Contact
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/rag-factory/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/rag-factory/discussions)
-- **Email**: your-email@example.com
+- **Issues**: [GitHub Issues](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/felixrivasuxdesigner/vector-doc-ingestion/discussions)
+- **Email**: felix.rivas.ux@gmail.com
 - **Discord**: (coming soon)
 
 ---
