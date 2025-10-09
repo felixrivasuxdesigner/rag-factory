@@ -81,8 +81,8 @@ RAG Factory is a **complete platform** for developers, researchers, and teams wh
 
 ```bash
 # Clone, start, and open dashboard
-git clone https://github.com/felixrivasuxdesigner/vector-doc-ingestion.git
-cd vector-doc-ingestion
+git clone https://github.com/felixrivasuxdesigner/rag-factory.git
+cd rag-factory
 ./setup.sh
 ```
 
@@ -95,8 +95,8 @@ This script will:
 ### Option 2: Manual Setup
 
 ```bash
-git clone https://github.com/felixrivasuxdesigner/vector-doc-ingestion.git
-cd vector-doc-ingestion
+git clone https://github.com/felixrivasuxdesigner/rag-factory.git
+cd rag-factory
 
 # Start all services
 docker-compose -f docker/docker-compose.yml up -d

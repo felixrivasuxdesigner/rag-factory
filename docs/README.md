@@ -1,6 +1,6 @@
 # Project Documentation
 
-This directory will contain detailed documentation about the vector-doc-ingestion system.
+This directory will contain detailed documentation about RAG Factory.
 
 ## Topics to be covered:
 
