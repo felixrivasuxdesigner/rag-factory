@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/yourusername/rag-factory/discussions
+    about: Ask questions, share ideas, or discuss RAG Factory
+  - name: 📚 Documentation
+    url: https://github.com/yourusername/rag-factory#readme
+    about: Read the documentation, API guide, and examples
+  - name: 🚀 Quick Start Guide
+    url: https://github.com/yourusername/rag-factory/blob/main/API_USAGE.md
+    about: Step-by-step guide to get started with RAG Factory

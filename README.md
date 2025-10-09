@@ -1,82 +1,126 @@
-# RAG Factory
+# RAG Factory 🏭
 
-A multi-project RAG (Retrieval-Augmented Generation) management system that lets you create, configure, and manage multiple RAG projects. Ingest documents from various sources, generate embeddings locally with Ollama, and store vectors in your own PostgreSQL databases.
+**A production-ready, open-source platform for building and managing multiple RAG (Retrieval-Augmented Generation) systems — 100% local, no vendor lock-in.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
+
+> **⚡ Quick Start**: `git clone` → `docker-compose up -d` → Open [http://localhost:3000](http://localhost:3000) → Start building RAG systems in minutes!
+
+---
 
 ## 🎯 What is RAG Factory?
 
-RAG Factory is a tool for developers who need to build multiple RAG systems. Instead of managing separate infrastructure for each RAG project, RAG Factory provides:
+RAG Factory is a **complete platform** for developers, researchers, and teams who need to build production-grade RAG systems **without the complexity**. No expensive API costs, no cloud dependencies, no vendor lock-in.
 
-- **Multi-Project Management**: Create unlimited RAG projects, each with its own configuration
-- **Flexible Data Sources**: Connect to SPARQL endpoints, REST APIs, file uploads, and more
-- **Local Embeddings**: Generate vectors using Ollama (no API costs, complete privacy)
-- **Your Database**: Store vectors in *your own* PostgreSQL databases, not ours
-- **Country/Region Filtering**: Tag documents by jurisdiction for multi-country applications
-- **Async Processing**: Background job queue handles large document ingestion
-- **Deduplication**: Hash-based tracking prevents processing the same document twice
+### Why RAG Factory?
+
+- **🏠 100% Local**: Everything runs in Docker — your data never leaves your infrastructure
+- **🎨 Beautiful UI**: Modern React dashboard for managing projects, sources, and jobs
+- **🔌 10+ Connectors**: SPARQL, REST APIs, GitHub, Google Drive, Notion, RSS, Web Scraper, and more
+- **📅 Smart Scheduling**: Automate syncs with cron expressions, intervals, or presets
+- **🤖 Full RAG Pipeline**: Semantic search + LLM generation (using local Ollama models)
+- **📊 Real-Time Monitoring**: Live job progress, analytics dashboard, and insights
+- **🗄️ Your Database**: Vectors stored in *your* PostgreSQL — you control everything
+- **🌍 Multi-Jurisdiction**: Built-in country/region tagging for global applications
+- **⚡ Production-Ready**: Deduplication, retry logic, rate limiting, error handling
 
 ## 🏗️ Architecture
 
-```
-┌─────────────┐
-│   Frontend  │ (React - Coming Soon)
-└──────┬──────┘
-       │
-       v
-┌─────────────┐     ┌─────────────┐
-│  FastAPI    │────>│    Redis    │
-│  (REST API) │     │   (Queue)   │
-└──────┬──────┘     └──────┬──────┘
-       │                   │
-       │                   v
-       │            ┌──────────────┐
-       │            │  RQ Workers  │
-       │            └──────┬───────┘
-       │                   │
-       v                   v
-┌──────────────────────────────────┐
-│   Internal DB (rag_factory_db)   │
-│   - Project configs              │
-│   - Document hashes (dedup)      │
-│   - Job tracking                 │
-└──────────────────────────────────┘
-       │
-       v
-┌──────────────┐     ┌─────────────────┐
-│   Ollama     │────>│ Your PostgreSQL │
-│  (Embeddings)│     │  + pgvector     │
-└──────────────┘     └─────────────────┘
+```ascii
+┌─────────────────────────────────────────────────────────────┐
+│                     React Frontend (Port 3000)              │
+│  • Project Management  • Source Configuration               │
+│  • Job Monitoring      • RAG Search & Query UI              │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   FastAPI Backend (Port 8000)               │
+│  • REST API        • Health Checks    • Scheduling          │
+└─────────┬───────────────────────────────────────┬───────────┘
+          │                                       │
+          ▼                                       ▼
+┌──────────────────┐                    ┌─────────────────────┐
+│  Redis (Queue)   │───────────────────>│   RQ Workers        │
+│  • Job Queue     │                    │   • Fetch docs      │
+│  • Scheduling    │                    │   • Embed & Store   │
+└──────────────────┘                    └──────────┬──────────┘
+                                                   │
+          ┌────────────────────────────────────────┼─────────────┐
+          │                                        │             │
+          ▼                                        ▼             ▼
+┌──────────────────┐                    ┌─────────────┐  ┌─────────────┐
+│  Internal DB     │                    │   Ollama    │  │  Your DB    │
+│  rag_factory_db  │                    │  • Embed    │  │  • Vectors  │
+│  • Projects      │                    │  • LLM Gen  │  │  • Metadata │
+│  • Jobs tracking │                    └─────────────┘  └─────────────┘
+│  • Doc hashes    │                    (Port 11434)     (Your config)
+└──────────────────┘
+(Port 5433)
 ```
 
-**Two-Database System:**
-1. **Internal DB**: Tracks projects, jobs, and document hashes
-2. **Your DB**: Stores the actual vector embeddings (you control it)
+**🔑 Key Concepts:**
+
+- **Two-Database System**: Internal DB tracks everything; your DB stores only vectors
+- **Async Processing**: Redis Queue + RQ Workers handle long-running ingestion jobs
+- **Local LLM**: Ollama provides embeddings (mxbai-embed-large) and generation (Gemma 3)
+- **No Vendor Lock-In**: Your vectors live in your PostgreSQL database
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- PostgreSQL database with pgvector extension (your target DB)
+- 8GB RAM minimum (16GB recommended for Ollama models)
+- PostgreSQL database with pgvector extension (for production use)
 
-### 1. Clone and Start Services
+### Option 1: One-Command Setup (Recommended)
 
 ```bash
-git clone https://github.com/yourusername/vector-doc-ingestion.git
-cd vector-doc-ingestion
+# Clone, start, and open dashboard
+git clone https://github.com/yourusername/rag-factory.git
+cd rag-factory
+./setup.sh
+```
+
+This script will:
+1. Start all Docker services
+2. Wait for services to be healthy
+3. Download Ollama models (embeddings + LLM)
+4. Open the dashboard at http://localhost:3000
+
+### Option 2: Manual Setup
+
+```bash
+git clone https://github.com/yourusername/rag-factory.git
+cd rag-factory
 
 # Start all services
 docker-compose -f docker/docker-compose.yml up -d
 
-# Check health
+# Wait for services (check health)
 curl http://localhost:8000/health
+
+# Download Ollama models (required for embeddings)
+docker exec ollama ollama pull mxbai-embed-large
+docker exec ollama ollama pull gemma3:1b-it-qat
+
+# Open the dashboard
+open http://localhost:3000  # macOS
+# or visit http://localhost:3000 in your browser
 ```
 
-Services:
-- **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **PostgreSQL**: localhost:5432
-- **Redis**: localhost:6379
-- **Ollama**: http://localhost:11434
+### 🌐 Access Points
+
+- **Dashboard**: <http://localhost:3000> (React UI)
+- **API**: <http://localhost:8000>
+- **API Docs**: <http://localhost:8000/docs> (Swagger)
+- **PostgreSQL**: `localhost:5433`
+- **Redis**: `localhost:6380`
+- **Ollama**: <http://localhost:11434>
 
 ### 2. Create Your First RAG Project
 
@@ -202,26 +246,70 @@ This tests:
 - **Frontend**: React 19 + TypeScript + Vite (coming soon)
 - **Containerization**: Docker Compose
 
-## 📋 Features
+## ✨ Features
 
-### ✅ MVP (Current)
-- [x] Multi-project management
-- [x] SPARQL data source connector
-- [x] Ollama embedding generation
-- [x] pgvector storage in user databases
-- [x] Async job processing with RQ
-- [x] Country/region tagging and filtering
-- [x] Hash-based deduplication
-- [x] REST API with auto-docs
-- [x] Complete testing suite
+### 🎯 Core Features (v0.8 - Production Ready)
 
-### 🚧 Coming Soon
-- [ ] WebSocket for real-time progress updates
-- [ ] REST API and file upload connectors
-- [ ] Frontend dashboard
-- [ ] Scheduled/automated syncs
-- [ ] User authentication
-- [ ] Advanced chunking with LangChain
+**Backend & API**
+- ✅ Multi-project RAG management
+- ✅ 10+ data source connectors (see below)
+- ✅ REST API with OpenAPI/Swagger docs
+- ✅ Async job processing (Redis + RQ)
+- ✅ Hash-based deduplication (SHA-256)
+- ✅ Smart chunking (adaptive based on doc size)
+- ✅ Rate limiting & retry logic
+- ✅ Incremental sync support
+
+**Frontend Dashboard**
+- ✅ Modern React 19 + TypeScript UI
+- ✅ Project & source management (CRUD)
+- ✅ Real-time job monitoring with progress bars
+- ✅ Analytics dashboard with charts
+- ✅ RAG search & query interface
+- ✅ Scheduling UI (presets + custom)
+- ✅ 15+ pre-configured connector examples
+
+**RAG Pipeline**
+- ✅ Semantic search (cosine similarity)
+- ✅ Full RAG queries (search + LLM generation)
+- ✅ Local embeddings (Ollama mxbai-embed-large, 1024d)
+- ✅ Local LLM (Ollama Gemma 3)
+- ✅ Country/region filtering
+- ✅ Metadata-rich results
+
+**Scheduling & Automation**
+- ✅ APScheduler integration
+- ✅ Cron expressions support
+- ✅ Interval-based schedules (30m, 1h, 6h, daily, weekly)
+- ✅ Manual trigger ("Sync Now")
+- ✅ Pause/resume schedules
+- ✅ Auto-load schedules on restart
+
+### 🔌 Available Connectors
+
+**Public (Generic)**
+1. ✅ **SPARQL** - Any SPARQL endpoint (legal databases, knowledge graphs)
+2. ✅ **REST API** - Generic JSON API connector
+3. ✅ **File Upload** - PDF, DOCX, TXT, MD, JSON, CSV
+4. ✅ **Web Scraper** - BeautifulSoup4 with CSS selectors
+5. ✅ **RSS/Atom** - Blogs, news feeds, podcasts
+6. ✅ **GitHub** - README, issues, PRs, code files
+7. ✅ **Google Drive** - Docs, Sheets, PDFs (OAuth2)
+8. ✅ **Notion** - Pages, databases (Integration Token)
+
+**Example (Pre-configured)**
+9. ✅ **Chile BCN** - Chilean legal norms (SPARQL)
+10. ✅ **US Congress** - Federal bills (Congress.gov API)
+
+### 🚧 Roadmap (See [ROADMAP.md](ROADMAP.md))
+
+**Next (Phase 6+)**
+- [ ] WebSocket for real-time updates
+- [ ] Multi-tenancy & authentication
+- [ ] Re-ranking for better search quality
+- [ ] Kubernetes deployment configs
+- [ ] Multi-modal support (images, audio)
+- [ ] Query analytics dashboard
 
 ## 🔧 Development
 
@@ -252,25 +340,93 @@ See `docker-compose.yml` for configuration options:
 
 ## 🤝 Contributing
 
-This project was built with [Claude Code](https://claude.com/claude-code). Contributions welcome!
+We ❤️ contributions! RAG Factory was built with [Claude Code](https://claude.com/claude-code) and is designed to be community-driven.
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+### Ways to Contribute
+
+- 🐛 **Report bugs** - [Open an issue](https://github.com/yourusername/rag-factory/issues/new?template=bug_report.md)
+- 💡 **Suggest features** - [Request a feature](https://github.com/yourusername/rag-factory/issues/new?template=feature_request.md)
+- 🔌 **Build connectors** - Add support for new data sources ([Guide](CONTRIBUTING.md#creating-a-new-connector))
+- 📝 **Improve docs** - Fix typos, add examples, write tutorials
+- 🧪 **Write tests** - Help us reach 100% coverage
+- 🎨 **Enhance UI** - Improve the frontend experience
+
+### Quick Start for Contributors
+
+```bash
+# Fork the repo, then:
+git clone https://github.com/YOUR_USERNAME/rag-factory.git
+cd rag-factory
+
+# Backend development
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn api.main:app --reload
+
+# Frontend development (in another terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+### Good First Issues
+
+Looking for easy tasks to get started? Check out issues labeled [`good-first-issue`](https://github.com/yourusername/rag-factory/labels/good-first-issue):
+
+- Add new connector for popular APIs
+- Improve error messages
+- Write documentation
+- Add unit tests
 
 ## 📄 License
 
-[MIT License](LICENSE) (or your preferred license)
+[MIT License](LICENSE) - Free to use, modify, and distribute.
 
 ## 🙏 Acknowledgments
 
-- Built with Claude Code
-- Uses Ollama for local embeddings
-- Powered by pgvector for efficient similarity search
-- SPARQL connector example uses Chile's BCN open data
+- **Built with** [Claude Code](https://claude.com/claude-code) - AI-powered development assistant
+- **Embeddings & LLM** [Ollama](https://ollama.ai/) - Local AI models (mxbai-embed-large, Gemma 3)
+- **Vector Search** [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL extension for similarity search
+- **Job Queue** [RQ](https://python-rq.org/) - Redis Queue for async processing
+- **Frontend** [React 19](https://react.dev/) + [Vite](https://vitejs.dev/) - Modern web stack
+- **Example Data** Chile's [BCN Open Data](https://datos.bcn.cl/) (SPARQL endpoint)
+
+## 📞 Support & Community
+
+- 📖 **Documentation**: [API Usage Guide](API_USAGE.md) | [Architecture](CLAUDE.md) | [Roadmap](ROADMAP.md)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/rag-factory/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/rag-factory/issues)
+- 📧 **Email**: your-email@example.com
+- 🌟 **Star us on GitHub** if you find this useful!
+
+## 🚀 What's Next?
+
+1. **Try it out**: Run `./setup.sh` and explore the dashboard
+2. **Read the docs**: Check out [API_USAGE.md](API_USAGE.md) for examples
+3. **Build a connector**: Follow the [Connector Guide](CONTRIBUTING.md#creating-a-new-connector)
+4. **Join the community**: Share your use case in [Discussions](https://github.com/yourusername/rag-factory/discussions)
+
+## 💼 Use Cases
+
+RAG Factory is perfect for:
+
+- 📚 **Research & Academia** - Index papers, books, and research materials
+- ⚖️ **Legal Tech** - Build legal document search systems
+- 🏢 **Enterprise Knowledge Base** - Internal docs, wikis, and resources
+- 🏥 **Healthcare** - Medical literature and patient resources
+- 🌐 **Multi-lingual Apps** - Handle documents from different countries/languages
+- 🎓 **Education** - Course materials and learning resources
 
 ---
 
-**Ready to build your RAG system?** Start with the [API Usage Guide](API_USAGE.md)!
+<div align="center">
+
+**⭐ Star us on GitHub • 🔌 Contribute a connector • 📣 Share your RAG Factory project!**
+
+Built with ❤️ by the RAG Factory community
+
+</div>
