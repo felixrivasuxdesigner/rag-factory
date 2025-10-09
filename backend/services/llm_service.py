@@ -21,7 +21,7 @@ class LLMService:
         self,
         model: str = "gemma3:1b-it-qat",
         ollama_host: str = None,
-        temperature: float = 0.7
+        temperature: float = 0.3  # Lower temp for more focused, detailed responses
     ):
         """
         Initialize the LLM service.
@@ -92,7 +92,7 @@ class LLMService:
             response = requests.post(
                 self.generate_endpoint,
                 json=payload,
-                timeout=60
+                timeout=120  # Increased timeout for detailed legal responses
             )
 
             if response.status_code == 200:
@@ -117,7 +117,7 @@ class LLMService:
         self,
         question: str,
         context_documents: List[Dict],
-        max_tokens: int = 500,
+        max_tokens: int = 800,  # Increased default for detailed legal answers
         temperature: Optional[float] = None
     ) -> Optional[str]:
         """
@@ -150,14 +150,18 @@ class LLMService:
         is_spanish = any(word in question.lower() for word in ['qué', 'cuál', 'cómo', 'dónde', 'cuándo', 'por qué', 'regulaciones', 'sobre', 'existen'])
 
         if is_spanish:
-            system_prompt = """Eres un asistente experto que responde preguntas basándote en los documentos de contexto proporcionados.
+            system_prompt = """Eres un asistente experto especializado en documentos legales y legislativos que responde preguntas basándote en los documentos de contexto proporcionados.
+
 Tu tarea:
-1. Lee los documentos de contexto cuidadosamente
-2. Responde la pregunta usando SOLO información del contexto
-3. Si el contexto no contiene suficiente información, di "No tengo suficiente información para responder esa pregunta."
-4. Sé conciso pero completo en tu respuesta
-5. Cita qué documento(s) usaste cuando sea relevante
-6. IMPORTANTE: Responde SIEMPRE en español"""
+1. Lee los documentos de contexto cuidadosamente y extrae TODA la información relevante
+2. Proporciona una respuesta DETALLADA y COMPLETA usando SOLO información del contexto
+3. Incluye definiciones, procedimientos, requisitos, y cualquier detalle específico mencionado
+4. Si hay listas, artículos, o puntos específicos, inclúyelos en tu respuesta
+5. Organiza la información de manera clara y estructurada
+6. Si el contexto no contiene suficiente información, di "No tengo suficiente información para responder esa pregunta."
+7. Cita qué documento(s) usaste cuando sea relevante
+8. IMPORTANTE: Responde SIEMPRE en español
+9. NO resumas demasiado - los usuarios necesitan información completa y detallada"""
 
             prompt = f"""Documentos de Contexto:
 {context_text}
@@ -166,14 +170,18 @@ Pregunta: {question}
 
 Respuesta:"""
         else:
-            system_prompt = """You are a helpful assistant that answers questions based on the provided context documents.
+            system_prompt = """You are an expert assistant specializing in legal and legislative documents that answers questions based on the provided context documents.
+
 Your task:
-1. Read the context documents carefully
-2. Answer the question using ONLY information from the context
-3. If the context doesn't contain enough information, say "I don't have enough information to answer that question."
-4. Be concise but complete in your answer
-5. Cite which document(s) you used when relevant
-6. IMPORTANT: Always respond in English"""
+1. Read the context documents carefully and extract ALL relevant information
+2. Provide a DETAILED and COMPREHENSIVE answer using ONLY information from the context
+3. Include definitions, procedures, requirements, and any specific details mentioned
+4. If there are lists, articles, or specific points, include them in your answer
+5. Organize the information clearly and in a structured way
+6. If the context doesn't contain enough information, say "I don't have enough information to answer that question."
+7. Cite which document(s) you used when relevant
+8. IMPORTANT: Always respond in English
+9. DO NOT over-summarize - users need complete and detailed information"""
 
             prompt = f"""Context Documents:
 {context_text}
