@@ -1,10 +1,18 @@
 """
-Chile BCN (Biblioteca del Congreso Nacional) example connector.
-Pre-configured connector for Chilean legal norms and legislative documents.
+Chile BCN (Biblioteca del Congreso Nacional) full-text connector.
+Pre-configured connector for Chilean legal norms with COMPLETE TEXT extraction.
+
+This connector:
+1. Fetches norms from BCN SPARQL endpoint (https://datos.bcn.cl/sparql)
+2. Downloads the FULL XML content from LeyChile
+3. Extracts ALL text recursively from XML
+4. Returns complete legal documents (~900+ characters vs ~70 with titles only)
 """
 
 import logging
-from typing import Dict, Optional, Any
+import requests
+import xml.etree.ElementTree as ET
+from typing import Dict, Optional, Any, List
 from connectors.generic_sparql_connector import GenericSPARQLConnector
 from connectors.base_connector import ConnectorMetadata
 
@@ -14,28 +22,25 @@ logger = logging.getLogger(__name__)
 
 class ChileBCNConnector(GenericSPARQLConnector):
     """
-    Pre-configured connector for Chile's Biblioteca del Congreso Nacional (BCN).
+    Full-text connector for Chile's Biblioteca del Congreso Nacional (BCN).
 
-    Provides access to Chilean legal norms, bills, and legislative documents
-    via the BCN SPARQL endpoint at https://datos.bcn.cl/sparql
-
-    This is an example connector with hardcoded configuration - users just need
-    to provide optional pagination parameters.
+    Downloads COMPLETE legal text from LeyChile XML instead of just titles.
     """
 
-    # Hardcoded SPARQL query for Chilean legal norms
+    # SPARQL query to get norm metadata INCLUDING XML document URL
     CHILE_BCN_QUERY = """
 PREFIX bcnnorms: <http://datos.bcn.cl/ontologies/bcn-norms#>
 PREFIX dc: <http://purl.org/dc/elements/1.1/>
 
-SELECT DISTINCT ?id ?title ?date
-WHERE {
+SELECT DISTINCT ?id ?title ?date ?xmlDoc
+WHERE {{
     ?norma dc:identifier ?id .
     ?norma dc:title ?title .
     ?norma a bcnnorms:Norm .
-    OPTIONAL { ?norma bcnnorms:publishDate ?date }
+    OPTIONAL {{ ?norma bcnnorms:publishDate ?date }}
+    OPTIONAL {{ ?norma bcnnorms:hasXmlDocument ?xmlDoc }}
     {date_filter}
-}
+}}
 ORDER BY DESC(?date)
 OFFSET {offset}
 LIMIT {limit}
@@ -45,90 +50,192 @@ LIMIT {limit}
     def get_metadata(cls) -> ConnectorMetadata:
         """Return connector metadata."""
         return ConnectorMetadata(
-            name="Chile BCN Legal Norms",
+            name="Chile BCN Legal Norms (Full-Text)",
             source_type="chile_bcn",
-            description="Pre-configured connector for Chilean legal norms from Biblioteca del Congreso Nacional",
-            version="1.0.0",
+            description="Chilean legal documents with COMPLETE text from BCN and LeyChile XML",
+            version="2.0.0",
             author="RAG Factory",
             category="example",
             supports_incremental_sync=True,
             supports_rate_limiting=True,
-            required_config_fields=[],  # No required fields - all hardcoded
+            required_config_fields=[],
             optional_config_fields=["limit"],
             default_rate_limit_preset="conservative"
         )
 
     def __init__(self, config: Optional[Dict[str, Any]] = None, rate_limit_config: Optional[Dict] = None):
         """
-        Initialize Chile BCN connector with hardcoded configuration.
+        Initialize Chile BCN full-text connector.
 
         Args:
             config: Optional configuration dict (only 'limit' is used, default: 25)
             rate_limit_config: Optional rate limiting configuration
         """
-        # Build hardcoded config for generic SPARQL connector
+        # Build config for generic SPARQL connector
         sparql_config = {
             'endpoint': 'https://datos.bcn.cl/sparql',
             'query': self.CHILE_BCN_QUERY,
             'id_field': 'id',
-            'content_fields': ['title'],  # Use title as content since we don't have full text
+            'content_fields': [],  # We'll override fetch_documents to get full text
             'title_field': 'title',
             'date_field': 'date',
             'limit': config.get('limit', 25) if config else 25
         }
 
-        # Use conservative rate limiting by default
+        # Use conservative rate limiting
         if not rate_limit_config:
             rate_limit_config = {'preset': 'conservative'}
 
-        # Initialize parent with hardcoded config
+        # Initialize parent
         super().__init__(config=sparql_config, rate_limit_config=rate_limit_config)
 
-        logger.info("✓ Chile BCN connector initialized with hardcoded configuration")
+        logger.info("✓ Chile BCN FULL-TEXT connector initialized")
+
+    def _download_xml_content(self, xml_url: str) -> Optional[str]:
+        """
+        Download full XML content from LeyChile using the provided URL.
+
+        Args:
+            xml_url: The complete XML document URL from BCN SPARQL
+
+        Returns:
+            Full text content extracted from XML, or None if failed
+        """
+        try:
+            # Apply rate limiting
+            if self.rate_limiter:
+                self.rate_limiter.wait_if_needed()
+
+            # CRITICAL: LeyChile blocks requests without User-Agent
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(xml_url, headers=headers, timeout=30)
+            response.raise_for_status()
+
+            # Parse XML and extract all text
+            root = ET.fromstring(response.content)
+            full_text = self._extract_all_text(root)
+
+            if full_text and len(full_text.strip()) > 0:
+                logger.info(f"  ✓ Downloaded {len(full_text)} chars from XML")
+                return full_text.strip()
+            else:
+                logger.warning(f"  ⚠ Empty content in XML")
+                return None
+
+        except Exception as e:
+            logger.error(f"  ✗ Failed to download XML from {xml_url}: {e}")
+            return None
+
+    def _extract_all_text(self, element) -> str:
+        """
+        Recursively extract all text from an XML element.
+
+        Args:
+            element: XML Element
+
+        Returns:
+            All text content concatenated
+        """
+        texts = []
+
+        # Get text from this element
+        if element.text:
+            texts.append(element.text.strip())
+
+        # Recursively get text from children
+        for child in element:
+            child_text = self._extract_all_text(child)
+            if child_text:
+                texts.append(child_text)
+
+        # Get tail text
+        if element.tail:
+            texts.append(element.tail.strip())
+
+        return ' '.join(filter(None, texts))
+
+    def fetch_documents(self, limit: Optional[int] = None, offset: Optional[int] = None, since: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Fetch documents from BCN SPARQL endpoint and download FULL TEXT from XML.
+
+        Args:
+            limit: Maximum number of documents to fetch
+            offset: Offset for pagination (passed to parent)
+            since: Optional date filter (YYYY-MM-DD format)
+
+        Returns:
+            List of document dictionaries with COMPLETE text content
+        """
+        # First, get metadata from SPARQL
+        docs = super().fetch_documents(limit=limit, since=since)
+
+        logger.info(f"\n📥 Fetched {len(docs)} norms from SPARQL, now downloading FULL TEXT from XML...")
+
+        # Now download full text for each document
+        enriched_docs = []
+        for i, doc in enumerate(docs, 1):
+            norm_id = doc['id']
+            xml_url = doc.get('metadata', {}).get('xmlDoc')
+
+            if not xml_url:
+                logger.warning(f"  [{i}/{len(docs)}] No XML URL for norm {norm_id}, using title only")
+                doc['content'] = doc['title']
+                doc['metadata']['has_full_text'] = False
+                enriched_docs.append(doc)
+                continue
+
+            logger.info(f"  [{i}/{len(docs)}] Downloading full text for norm {norm_id} from {xml_url}...")
+
+            # Download XML content
+            full_text = self._download_xml_content(xml_url)
+
+            if full_text:
+                # Replace title-only content with FULL TEXT
+                doc['content'] = full_text
+                doc['metadata']['has_full_text'] = True
+                doc['metadata']['content_length'] = len(full_text)
+                enriched_docs.append(doc)
+                logger.info(f"    ✓ Enriched: {len(full_text)} characters")
+            else:
+                # Fallback to title if XML download failed
+                logger.warning(f"    ⚠ Using title as fallback for norm {norm_id}")
+                doc['content'] = doc['title']
+                doc['metadata']['has_full_text'] = False
+                doc['metadata']['content_length'] = len(doc['title'])
+                enriched_docs.append(doc)
+
+        logger.info(f"\n✅ Successfully enriched {len(enriched_docs)} documents with full text")
+        return enriched_docs
 
 
 if __name__ == '__main__':
-    """Test the Chile BCN connector"""
+    """Test the Chile BCN full-text connector"""
     print("=" * 70)
-    print("Testing Chile BCN Connector (Example Connector)")
+    print("Testing Chile BCN FULL-TEXT Connector")
     print("=" * 70)
 
-    # Display connector metadata
-    metadata = ChileBCNConnector.get_metadata()
-    print(f"\n📋 Connector Metadata:")
-    print(f"  Name: {metadata.name}")
-    print(f"  Type: {metadata.source_type}")
-    print(f"  Category: {metadata.category}")
-    print(f"  Version: {metadata.version}")
-    print(f"  Required Config: {metadata.required_config_fields}")
-    print(f"  Optional Config: {metadata.optional_config_fields}")
+    connector = ChileBCNConnector(config={'limit': 3})
 
-    # Create connector with minimal config (or no config)
-    print("\n🔌 Creating connector (no config needed)...")
-    connector = ChileBCNConnector()
-
-    # Test connection
-    print("\n🔌 Testing connection to Chile BCN SPARQL endpoint...")
+    print("\n🔌 Testing connection...")
     test_result = connector.test_connection()
     print(f"  Status: {'✅ Success' if test_result['success'] else '❌ Failed'}")
-    print(f"  Message: {test_result['message']}")
 
-    # Fetch documents
-    print("\n📥 Fetching 3 Chilean legal norms...\n")
-    docs = connector.fetch_documents(limit=3)
+    if test_result['success']:
+        print("\n📥 Fetching 3 norms with FULL TEXT...\n")
+        docs = connector.fetch_documents(limit=3)
 
-    if docs:
-        print(f"✅ Successfully fetched {len(docs)} documents\n")
-        for i, doc in enumerate(docs, 1):
-            print(f"{'─' * 70}")
-            print(f"Document {i}:")
-            print(f"  ID: {doc['id']}")
-            print(f"  Title: {doc['title'][:80]}...")
-            print(f"  Content Length: {len(doc['content'])} characters")
-            if 'date' in doc['metadata']:
-                print(f"  Date: {doc['metadata'].get('date', 'N/A')}")
-            print()
-    else:
-        print("❌ No documents retrieved")
+        if docs:
+            print(f"\n✅ Successfully fetched {len(docs)} documents\n")
+            for i, doc in enumerate(docs, 1):
+                print(f"{'─' * 70}")
+                print(f"Document {i}:")
+                print(f"  ID: {doc['id']}")
+                print(f"  Title: {doc['title'][:80]}...")
+                print(f"  Content Length: {len(doc['content'])} characters")
+                print(f"  Has Full Text: {doc['metadata'].get('has_full_text', False)}")
+                print(f"  Preview: {doc['content'][:200]}...")
+                print()
+        else:
+            print("❌ No documents retrieved")
 
     print("=" * 70)
