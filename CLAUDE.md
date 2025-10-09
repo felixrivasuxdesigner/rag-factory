@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Backend**: Python 3.11, FastAPI, psycopg2
 - **Job Queue**: Redis + RQ (Redis Queue)
 - **Database**: PostgreSQL with pgvector extension
-- **Embeddings**: Ollama (local) - mxbai-embed-large (1024 dimensions)
+- **Embeddings**: Ollama (local) - jina/jina-embeddings-v2-base-es (768 dimensions, bilingual ES/EN)
 - **Frontend**: React 19 with TypeScript and Vite
 - **Containerization**: Docker Compose
 
@@ -212,7 +212,8 @@ USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 - Workers update document status in `documents_tracking`
 
 ### Ollama Models Available
-- **mxbai-embed-large** (669 MB) - Default embedding model, 1024 dimensions
+- **jina/jina-embeddings-v2-base-es** (323 MB) - Default embedding model, 768 dimensions, bilingual Spanish-English
+- **embeddinggemma** (621 MB) - Alternative embedding model, 768 dimensions, multilingual (100+ languages)
 - **gemma3:4b-it-qat** (4.0 GB) - LLM for future chunking/processing
 - **gemma3:1b-it-qat** (1.0 GB) - Lighter LLM option
 

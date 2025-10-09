@@ -37,8 +37,8 @@ def create_internal_schema(conn):
         target_table_name VARCHAR(255) NOT NULL,
 
         -- Embedding configuration
-        embedding_model VARCHAR(100) NOT NULL DEFAULT 'mxbai-embed-large',
-        embedding_dimension INTEGER NOT NULL DEFAULT 1024,
+        embedding_model VARCHAR(100) NOT NULL DEFAULT 'jina/jina-embeddings-v2-base-es',
+        embedding_dimension INTEGER NOT NULL DEFAULT 768,
         chunk_size INTEGER DEFAULT 1000,
         chunk_overlap INTEGER DEFAULT 200,
 

@@ -46,8 +46,8 @@ class RAGProjectCreate(BaseModel):
     target_table_name: str
 
     # Embedding configuration
-    embedding_model: str = "mxbai-embed-large"
-    embedding_dimension: int = 1024
+    embedding_model: str = "jina/jina-embeddings-v2-base-es"
+    embedding_dimension: int = 768
     chunk_size: int = 1000
     chunk_overlap: int = 200
 

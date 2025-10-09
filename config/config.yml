@@ -14,7 +14,7 @@ database:
 ollama:
   host: localhost
   port: 11434
-  embedding_model: mxbai-embed-large:latest
+  embedding_model: jina/jina-embeddings-v2-base-es:latest
 
 dashboard:
   host: localhost

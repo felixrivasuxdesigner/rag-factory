@@ -64,8 +64,8 @@ def test_create_project() -> Dict:
         "target_db_user": "user",
         "target_db_password": "password",
         "target_table_name": f"test_vectors_{int(time.time())}",
-        "embedding_model": "mxbai-embed-large",
-        "embedding_dimension": 1024,
+        "embedding_model": "jina/jina-embeddings-v2-base-es",
+        "embedding_dimension": 768,
         "chunk_size": 500,
         "chunk_overlap": 100
     }

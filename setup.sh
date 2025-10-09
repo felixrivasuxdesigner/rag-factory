@@ -112,11 +112,11 @@ fi
 print_status "Checking Ollama models..."
 
 # Check if embedding model exists
-if docker exec ollama ollama list 2>/dev/null | grep -q "mxbai-embed-large"; then
-    print_success "Embedding model (mxbai-embed-large) already downloaded"
+if docker exec ollama ollama list 2>/dev/null | grep -q "jina-embeddings-v2-base-es"; then
+    print_success "Embedding model (jina/jina-embeddings-v2-base-es) already downloaded"
 else
-    print_status "Downloading embedding model (mxbai-embed-large, ~669MB)..."
-    docker exec ollama ollama pull mxbai-embed-large
+    print_status "Downloading embedding model (jina/jina-embeddings-v2-base-es, ~323MB, bilingual ES/EN)..."
+    docker exec ollama ollama pull jina/jina-embeddings-v2-base-es
     print_success "Embedding model downloaded"
 fi
 

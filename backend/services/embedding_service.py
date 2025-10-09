@@ -20,17 +20,17 @@ class EmbeddingService:
 
     def __init__(
         self,
-        model: str = "mxbai-embed-large",
+        model: str = "jina/jina-embeddings-v2-base-es",
         ollama_host: str = None,
-        embedding_dimension: int = 1024
+        embedding_dimension: int = 768
     ):
         """
         Initialize the embedding service.
 
         Args:
-            model (str): The Ollama embedding model to use
+            model (str): The Ollama embedding model to use (default: jina/jina-embeddings-v2-base-es for bilingual ES-EN)
             ollama_host (str): Ollama server host (default: from env or localhost)
-            embedding_dimension (int): Dimension of the embeddings
+            embedding_dimension (int): Dimension of the embeddings (768 for Jina ES, 1024 for mxbai)
         """
         self.model = model
         self.embedding_dimension = embedding_dimension
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     print("--- Testing Embedding Service ---\n")
 
     # Initialize service
-    service = EmbeddingService(model="mxbai-embed-large")
+    service = EmbeddingService(model="jina/jina-embeddings-v2-base-es")
 
     # Health check
     print("Checking Ollama service health...")

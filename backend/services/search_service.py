@@ -33,7 +33,8 @@ class SearchService:
         db_config: Dict[str, str],
         table_name: str,
         top_k: int = 5,
-        similarity_threshold: float = 0.0
+        similarity_threshold: float = 0.0,
+        query_embedding: Optional[List[float]] = None
     ) -> List[Dict]:
         """
         Perform semantic similarity search on a vector database.
@@ -44,14 +45,16 @@ class SearchService:
             table_name (str): Name of the vector table
             top_k (int): Number of top results to return
             similarity_threshold (float): Minimum similarity score (0.0 to 1.0)
+            query_embedding (Optional[List[float]]): Pre-generated embedding vector (if None, will generate using default service)
 
         Returns:
             List[Dict]: List of search results with content, metadata, and similarity scores
         """
         logger.info(f"Performing similarity search for query: '{query[:50]}...'")
 
-        # Generate embedding for the query
-        query_embedding = self.embedding_service.generate_embedding(query)
+        # Use provided embedding or generate one
+        if query_embedding is None:
+            query_embedding = self.embedding_service.generate_embedding(query)
 
         if not query_embedding:
             logger.error("Failed to generate embedding for query")
@@ -151,7 +154,8 @@ class SearchService:
 
             cursor.execute(
                 "SELECT target_db_host, target_db_port, target_db_name, "
-                "target_db_user, target_db_password, target_table_name "
+                "target_db_user, target_db_password, target_table_name, "
+                "embedding_model, embedding_dimension "
                 "FROM rag_projects WHERE id = %s AND status = 'active'",
                 (project_id,)
             )
@@ -173,14 +177,31 @@ class SearchService:
                 'password': result[4]
             }
             table_name = result[5]
+            embedding_model = result[6]
+            embedding_dimension = result[7]
 
-            # Perform search
+            # Create embedding service with project's configured model
+            logger.info(f"Using project's embedding model: {embedding_model} ({embedding_dimension} dims)")
+            project_embedding_service = EmbeddingService(
+                model=embedding_model,
+                embedding_dimension=embedding_dimension
+            )
+
+            # Generate embedding for query using project's model
+            query_embedding = project_embedding_service.generate_embedding(query)
+
+            if not query_embedding:
+                logger.error("Failed to generate embedding for query")
+                return []
+
+            # Perform search with pre-generated embedding
             results = self.similarity_search(
                 query=query,
                 db_config=db_config,
                 table_name=table_name,
                 top_k=top_k,
-                similarity_threshold=similarity_threshold
+                similarity_threshold=similarity_threshold,
+                query_embedding=query_embedding
             )
 
             # Add project context

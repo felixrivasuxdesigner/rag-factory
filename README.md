@@ -66,7 +66,7 @@ RAG Factory is a **complete platform** for developers, researchers, and teams wh
 
 - **Two-Database System**: Internal DB tracks everything; your DB stores only vectors
 - **Async Processing**: Redis Queue + RQ Workers handle long-running ingestion jobs
-- **Local LLM**: Ollama provides embeddings (mxbai-embed-large) and generation (Gemma 3)
+- **Local LLM**: Ollama provides embeddings (jina/jina-embeddings-v2-base-es bilingual ES/EN) and generation (Gemma 3)
 - **No Vendor Lock-In**: Your vectors live in your PostgreSQL database
 
 ## 🚀 Quick Start
@@ -105,7 +105,7 @@ docker-compose -f docker/docker-compose.yml up -d
 curl http://localhost:8000/health
 
 # Download Ollama models (required for embeddings)
-docker exec ollama ollama pull mxbai-embed-large
+docker exec ollama ollama pull jina/jina-embeddings-v2-base-es
 docker exec ollama ollama pull gemma3:1b-it-qat
 
 # Open the dashboard
@@ -136,8 +136,8 @@ curl -X POST "http://localhost:8000/projects" \
     "target_db_user": "your_user",
     "target_db_password": "your_password",
     "target_table_name": "legal_vectors",
-    "embedding_model": "mxbai-embed-large",
-    "embedding_dimension": 1024
+    "embedding_model": "jina/jina-embeddings-v2-base-es",
+    "embedding_dimension": 768
   }'
 ```
 
@@ -242,7 +242,7 @@ This tests:
 - **Backend**: Python 3.11, FastAPI
 - **Job Queue**: Redis + RQ (Redis Queue)
 - **Database**: PostgreSQL + pgvector
-- **Embeddings**: Ollama (mxbai-embed-large, 1024 dimensions)
+- **Embeddings**: Ollama (jina/jina-embeddings-v2-base-es, 768 dimensions, bilingual ES/EN)
 - **Frontend**: React 19 + TypeScript + Vite (coming soon)
 - **Containerization**: Docker Compose
 
@@ -272,7 +272,7 @@ This tests:
 **RAG Pipeline**
 - ✅ Semantic search (cosine similarity)
 - ✅ Full RAG queries (search + LLM generation)
-- ✅ Local embeddings (Ollama mxbai-embed-large, 1024d)
+- ✅ Local embeddings (Ollama jina/jina-embeddings-v2-base-es, 768d, bilingual ES/EN)
 - ✅ Local LLM (Ollama Gemma 3)
 - ✅ Country/region filtering
 - ✅ Metadata-rich results
@@ -389,7 +389,7 @@ Looking for easy tasks to get started? Check out issues labeled [`good-first-iss
 ## 🙏 Acknowledgments
 
 - **Built with** [Claude Code](https://claude.com/claude-code) - AI-powered development assistant
-- **Embeddings & LLM** [Ollama](https://ollama.ai/) - Local AI models (mxbai-embed-large, Gemma 3)
+- **Embeddings & LLM** [Ollama](https://ollama.ai/) - Local AI models (jina/jina-embeddings-v2-base-es bilingual, Gemma 3)
 - **Vector Search** [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL extension for similarity search
 - **Job Queue** [RQ](https://python-rq.org/) - Redis Queue for async processing
 - **Frontend** [React 19](https://react.dev/) + [Vite](https://vitejs.dev/) - Modern web stack

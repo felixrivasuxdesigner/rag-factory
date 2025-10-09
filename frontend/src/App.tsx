@@ -605,9 +605,10 @@ function App() {
                 <div className="form-group">
                   <label>Model *</label>
                   <select name="embedding_model" required>
-                    <option value="mxbai-embed-large">mxbai-embed-large (1024 dims)</option>
+                    <option value="jina/jina-embeddings-v2-base-es">jina/jina-embeddings-v2-base-es (768 dims) - Bilingual ES/EN</option>
+                    <option value="embeddinggemma">embeddinggemma (768 dims) - Multilingual (100+ languages)</option>
                   </select>
-                  <small>Must be available in Ollama</small>
+                  <small>Jina ES recommended for Spanish-English bilingual content</small>
                 </div>
 
                 <div className="form-actions">
@@ -873,7 +874,8 @@ function App() {
               <div className="form-group">
                 <label>Model *</label>
                 <select name="embedding_model" defaultValue={editingProject.embedding_model} required>
-                  <option value="mxbai-embed-large">mxbai-embed-large (1024 dims)</option>
+                  <option value="jina/jina-embeddings-v2-base-es">jina/jina-embeddings-v2-base-es (768 dims) - Bilingual ES/EN</option>
+                  <option value="embeddinggemma">embeddinggemma (768 dims) - Multilingual (100+ languages)</option>
                 </select>
               </div>
               <div className="form-actions">

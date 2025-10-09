@@ -49,8 +49,8 @@ curl -X POST "http://localhost:8000/projects" \
     "target_db_user": "myuser",
     "target_db_password": "mypassword",
     "target_table_name": "chile_legal_vectors",
-    "embedding_model": "mxbai-embed-large",
-    "embedding_dimension": 1024,
+    "embedding_model": "jina/jina-embeddings-v2-base-es",
+    "embedding_dimension": 768,
     "chunk_size": 1000,
     "chunk_overlap": 200
   }'
@@ -337,7 +337,7 @@ python3 test_api.py
 **Fix:**
 ```bash
 docker-compose -f docker/docker-compose.yml up -d ollama
-docker exec ollama ollama pull mxbai-embed-large
+docker exec ollama ollama pull jina/jina-embeddings-v2-base-es
 ```
 
 ### 3. Connection test fails

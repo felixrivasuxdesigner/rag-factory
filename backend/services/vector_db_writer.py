@@ -27,7 +27,7 @@ class VectorDBWriter:
         user: str,
         password: str,
         table_name: str,
-        embedding_dimension: int = 1024
+        embedding_dimension: int = 768
     ):
         """
         Initialize connection to user's vector database.
@@ -39,7 +39,7 @@ class VectorDBWriter:
             user: Username
             password: Password
             table_name: Table name where vectors will be stored
-            embedding_dimension: Vector dimension (default 1024 for mxbai-embed-large)
+            embedding_dimension: Vector dimension (default 768 for jina/jina-embeddings-v2-base-es)
         """
         self.connection_params = {
             'host': host,
@@ -392,13 +392,13 @@ if __name__ == '__main__':
             {
                 'id': 'doc-001',
                 'content': 'This is a test document about machine learning',
-                'embedding': [random.random() for _ in range(1024)],
+                'embedding': [random.random() for _ in range(768)],
                 'metadata': {'source': 'test', 'topic': 'ML'}
             },
             {
                 'id': 'doc-002',
                 'content': 'Another document about artificial intelligence',
-                'embedding': [random.random() for _ in range(1024)],
+                'embedding': [random.random() for _ in range(768)],
                 'metadata': {'source': 'test', 'topic': 'AI'}
             }
         ]
