@@ -145,16 +145,37 @@ class LLMService:
 
         context_text = "\n\n".join(context_parts)
 
-        # Build RAG prompt
-        system_prompt = """You are a helpful assistant that answers questions based on the provided context documents.
+        # Detect language from question and build appropriate system prompt
+        # Simple heuristic: check for common Spanish words/characters
+        is_spanish = any(word in question.lower() for word in ['qué', 'cuál', 'cómo', 'dónde', 'cuándo', 'por qué', 'regulaciones', 'sobre', 'existen'])
+
+        if is_spanish:
+            system_prompt = """Eres un asistente experto que responde preguntas basándote en los documentos de contexto proporcionados.
+Tu tarea:
+1. Lee los documentos de contexto cuidadosamente
+2. Responde la pregunta usando SOLO información del contexto
+3. Si el contexto no contiene suficiente información, di "No tengo suficiente información para responder esa pregunta."
+4. Sé conciso pero completo en tu respuesta
+5. Cita qué documento(s) usaste cuando sea relevante
+6. IMPORTANTE: Responde SIEMPRE en español"""
+
+            prompt = f"""Documentos de Contexto:
+{context_text}
+
+Pregunta: {question}
+
+Respuesta:"""
+        else:
+            system_prompt = """You are a helpful assistant that answers questions based on the provided context documents.
 Your task:
 1. Read the context documents carefully
 2. Answer the question using ONLY information from the context
 3. If the context doesn't contain enough information, say "I don't have enough information to answer that question."
 4. Be concise but complete in your answer
-5. Cite which document(s) you used when relevant"""
+5. Cite which document(s) you used when relevant
+6. IMPORTANT: Always respond in English"""
 
-        prompt = f"""Context Documents:
+            prompt = f"""Context Documents:
 {context_text}
 
 Question: {question}
