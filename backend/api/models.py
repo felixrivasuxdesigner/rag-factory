@@ -11,11 +11,15 @@ from enum import Enum
 # Enums
 class SourceType(str, Enum):
     SPARQL = "sparql"
-    CHILE_FULLTEXT = "chile_fulltext"
-    CONGRESS_API = "congress_api"
+    CHILE_BCN = "chile_bcn"
+    US_CONGRESS = "us_congress"
     REST_API = "rest_api"
     FILE_UPLOAD = "file_upload"
-    WEB_SCRAPE = "web_scrape"
+    WEB_SCRAPER = "web_scraper"
+    RSS_FEED = "rss_feed"
+    GITHUB = "github"
+    GOOGLE_DRIVE = "google_drive"
+    NOTION = "notion"
 
 
 class JobStatus(str, Enum):

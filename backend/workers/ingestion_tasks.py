@@ -12,9 +12,7 @@ import psycopg2
 
 from services.embedding_service import EmbeddingService
 from services.vector_db_writer import VectorDBWriter
-from connectors.sparql_connector import SparqlConnector
-from connectors.chile_full_text_connector import ChileFullTextConnector
-from connectors.congress_full_text_connector import CongressFullTextConnector
+from connectors.registry import ConnectorRegistry
 from processors.document_processor import DocumentProcessor
 from processors.adaptive_chunker import AdaptiveChunker
 from core.database import get_db_connection
@@ -144,62 +142,31 @@ def ingest_documents_from_source(
     errors = []
 
     try:
-        # Step 1: Fetch documents from source
+        # Step 1: Fetch documents from source using ConnectorRegistry
         logger.info(f"Fetching documents from {source_config['source_type']}...")
 
-        if source_config['source_type'] == 'sparql':
-            # Get endpoint from config, or use default
-            endpoint = source_config['config'].get('endpoint', 'https://datos.bcn.cl/sparql')
-            if not endpoint or endpoint.strip() == '':
-                endpoint = 'https://datos.bcn.cl/sparql'
+        # Use ConnectorRegistry to get the appropriate connector
+        registry = ConnectorRegistry()
+        connector_class = registry.get_connector_class(source_config['source_type'])
 
-            connector = SparqlConnector(endpoint)
+        if not connector_class:
+            raise NotImplementedError(f"Source type {source_config['source_type']} not found in registry")
 
-            # Get custom query if provided
-            custom_query = source_config['config'].get('query')
-            limit = source_config['config'].get('limit', 25)
+        # Initialize connector with config
+        connector = connector_class(
+            config=source_config['config'],
+            rate_limit_config=source_config.get('rate_limits')
+        )
 
-            raw_docs = connector.get_leyes(limit=limit, custom_query=custom_query)
-            documents = DocumentProcessor.process_sparql_result(raw_docs)
+        # Fetch documents
+        limit = source_config['config'].get('limit', 10)
+        offset = source_config['config'].get('offset', 0)
 
-        elif source_config['source_type'] == 'chile_fulltext':
-            # Chile BCN with full XML text
-            limit = source_config['config'].get('limit', 10)
-            offset = source_config['config'].get('offset', 0)
-            rate_limits = source_config.get('rate_limits')
-
-            connector = ChileFullTextConnector(
-                config=source_config['config'],
-                rate_limit_config=rate_limits
-            )
-            documents = connector.fetch_documents(
-                limit=limit,
-                offset=offset,
-                since=last_sync_at
-            )
-
-        elif source_config['source_type'] == 'congress_api':
-            # US Congress API with full bill text
-            limit = source_config['config'].get('limit', 10)
-            offset = source_config['config'].get('offset', 0)
-            rate_limits = source_config.get('rate_limits')
-
-            connector = CongressFullTextConnector(
-                config=source_config['config'],
-                rate_limit_config=rate_limits
-            )
-            documents = connector.fetch_documents(
-                limit=limit,
-                offset=offset,
-                since=last_sync_at
-            )
-
-        elif source_config['source_type'] == 'file_upload':
-            # Documents are already in the config
-            documents = source_config['config'].get('documents', [])
-
-        else:
-            raise NotImplementedError(f"Source type {source_config['source_type']} not yet implemented")
+        documents = connector.fetch_documents(
+            limit=limit,
+            offset=offset,
+            since=last_sync_at
+        )
 
         total_documents = len(documents)
         update_job_progress(job_id, total_documents=total_documents)
