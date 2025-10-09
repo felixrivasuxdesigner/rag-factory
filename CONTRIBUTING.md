@@ -280,12 +280,37 @@ def test_fetch_documents():
 
 ## 🚀 Pull Request Process
 
+### Branch Naming Convention
+Follow this pattern for your branch names:
+- `feature/short-description` - New features
+- `fix/short-description` - Bug fixes
+- `docs/short-description` - Documentation changes
+- `refactor/short-description` - Code refactoring
+- `test/short-description` - Adding tests
+- `chore/short-description` - Maintenance tasks
+
+Examples:
+```bash
+git checkout -b feature/add-rss-connector
+git checkout -b fix/embedding-timeout
+git checkout -b docs/update-api-guide
+```
+
+### Workflow
+1. **Fork the repository** to your GitHub account
+2. **Clone your fork** locally
+3. **Create a branch** from `main` using naming convention above
+4. **Make your changes** and commit with conventional commits
+5. **Push to your fork**
+6. **Open a Pull Request** to the main repository
+
 ### Before Submitting
 - [ ] Code follows style guidelines
-- [ ] Tests pass locally
+- [ ] Tests pass locally (CI will verify)
 - [ ] Documentation updated
 - [ ] No sensitive data (API keys, passwords)
 - [ ] Commit messages follow convention
+- [ ] Branch name follows convention
 
 ### PR Template
 ```markdown

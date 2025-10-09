@@ -1,0 +1,21 @@
+# CODEOWNERS file for RAG Factory
+# These owners will be automatically requested for review when someone opens a pull request
+
+# Default owners for everything in the repo
+* @felixrivasuxdesigner
+
+# Backend code
+/backend/ @felixrivasuxdesigner
+
+# Frontend code
+/frontend/ @felixrivasuxdesigner
+
+# Docker configuration
+/docker/ @felixrivasuxdesigner
+
+# Documentation
+/docs/ @felixrivasuxdesigner
+*.md @felixrivasuxdesigner
+
+# GitHub workflows and configurations
+/.github/ @felixrivasuxdesigner
