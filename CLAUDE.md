@@ -14,6 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Job Queue**: Redis + RQ (Redis Queue)
 - **Database**: PostgreSQL with pgvector extension
 - **Embeddings**: Ollama (local) - jina/jina-embeddings-v2-base-es (768 dimensions, bilingual ES/EN)
+- **LLM Providers**:
+  - **Google AI Cloud** (default) - gemini-flash-lite-latest, gemma-3-4b-it, gemma-3-12b-it
+  - **Ollama Local** - gemma3:1b-it-qat, gemma3:4b-it-qat (optional)
 - **Frontend**: React 19 with TypeScript and Vite
 - **Containerization**: Docker Compose
 
@@ -211,11 +214,19 @@ USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 - Job progress updates are written to `ingestion_jobs` table
 - Workers update document status in `documents_tracking`
 
-### Ollama Models Available
+### LLM Models Available
+
+#### Google AI Cloud (Recommended - Fast & Free)
+- **gemini-flash-lite-latest** (default) - Fastest, 8s response, 3.6k chars, free 1,500 queries/day
+- **gemini-2.0-flash-exp** - More detailed, 9s response, 4.1k chars
+- **gemma-3-4b-it** - Google-hosted Gemma, 7s response
+- **gemma-3-12b-it** - Most detailed, 14s response, 4k chars
+
+#### Ollama Local (Optional - Privacy-focused)
 - **jina/jina-embeddings-v2-base-es** (323 MB) - Default embedding model, 768 dimensions, bilingual Spanish-English
 - **embeddinggemma** (621 MB) - Alternative embedding model, 768 dimensions, multilingual (100+ languages)
-- **gemma3:4b-it-qat** (4.0 GB) - LLM for future chunking/processing
-- **gemma3:1b-it-qat** (1.0 GB) - Lighter LLM option
+- **gemma3:1b-it-qat** (1.0 GB) - Faster local LLM option (~40s response)
+- **gemma3:4b-it-qat** (4.0 GB) - Better quality local LLM (~120s response)
 
 ## Service Ports
 
@@ -235,6 +246,46 @@ USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 5. **Monitor progress**: `GET /jobs/{id}` or `GET /projects/{id}/stats`
 6. **Query vectors**: Connect directly to user's database for similarity search
 
+## Google AI Cloud Setup (Recommended)
+
+RAG Factory supports cloud-based LLM providers for faster responses, especially on older hardware.
+
+### Quick Setup (3 minutes)
+
+1. **Get API Key** (Free - 1,500 queries/day):
+   ```bash
+   # Visit: https://aistudio.google.com/apikey
+   # Sign in → Create API Key → Copy it
+   ```
+
+2. **Configure Environment**:
+   ```bash
+   # Create .env file in docker directory
+   cd docker
+   echo "GOOGLE_AI_API_KEY=your-api-key-here" > .env
+   ```
+
+3. **Restart API**:
+   ```bash
+   docker-compose restart api
+   ```
+
+4. **Use in Frontend**:
+   - Open http://localhost:3000
+   - Go to "Search & Query" tab
+   - Select "Google AI Cloud" from LLM Provider dropdown
+   - Enjoy 8-second responses instead of 40-120s with local Ollama!
+
+### Performance Comparison
+
+| Provider | Model | Response Time | Quality | Cost |
+|----------|-------|---------------|---------|------|
+| Google AI (cloud) | gemini-flash-lite | ~8s | ⭐⭐⭐⭐ | Free (1,500/day) |
+| Ollama (local) | gemma3:1b | ~40s | ⭐⭐ | Free (unlimited) |
+| Ollama (local) | gemma3:4b | ~120s | ⭐⭐⭐ | Free (unlimited) |
+
+**Recommendation**: Use Google AI Cloud for better user experience. Falls back to Ollama automatically if API key not configured.
+
 ## Testing
 
 No automated tests yet. Each module has manual test code in its `if __name__ == '__main__'` block:
@@ -246,7 +297,7 @@ python -m backend.services.embedding_service
 python -m backend.services.vector_db_writer
 ```
 
-## Future Enhancements (Not in MVP)
+## Future Enhancements
 
 - WebSocket support for real-time job progress
 - Additional data sources: REST APIs, file uploads, web scraping

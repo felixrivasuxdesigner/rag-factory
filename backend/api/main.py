@@ -28,6 +28,7 @@ from services.vector_db_writer import VectorDBWriter
 from services.search_service import SearchService
 from services.embedding_service import EmbeddingService
 from services.llm_service import LLMService
+from services.gemini_service import GeminiService, GEMINI_AVAILABLE
 from connectors.registry import get_registry
 from services import scheduler_service
 
@@ -57,6 +58,17 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:password@localh
 embedding_service = EmbeddingService()
 search_service = SearchService(embedding_service=embedding_service)
 llm_service = LLMService(model="gemma3:1b-it-qat")
+
+# Initialize Google AI service (Gemini/Gemma) if available
+gemini_service = None
+if GEMINI_AVAILABLE:
+    try:
+        gemini_service = GeminiService(model="gemini-flash-lite-latest")
+        logger.info("✓ Google AI service initialized (gemini-flash-lite-latest)")
+    except Exception as e:
+        logger.warning(f"Google AI service not available: {e}")
+else:
+    logger.info("Google Generative AI package not installed - Google AI cloud provider unavailable")
 
 
 # ============================================================================
@@ -754,17 +766,34 @@ def rag_query(request: RAGQueryRequest):
         ]
 
         # Step 2: Generate answer using LLM with context
-        # Update LLM service model if different from default
-        if request.model != llm_service.model:
-            temp_llm = LLMService(model=request.model)
-        else:
-            temp_llm = llm_service
+        # Route to appropriate LLM provider
+        if request.llm_provider.lower() == "gemini":
+            if not gemini_service:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Google AI cloud provider not available. Please check GOOGLE_AI_API_KEY or install google-generativeai"
+                )
 
-        answer = temp_llm.generate_with_context(
-            question=request.question,
-            context_documents=context_results,
-            max_tokens=request.max_tokens
-        )
+            # Use Google AI cloud service (Gemini/Gemma)
+            logger.info(f"Using Google AI cloud provider with model: gemini-flash-lite-latest")
+            answer = gemini_service.generate_with_context(
+                question=request.question,
+                context_documents=context_results,
+                max_tokens=request.max_tokens
+            )
+        else:
+            # Use Ollama service (default)
+            if request.model != llm_service.model:
+                temp_llm = LLMService(model=request.model)
+            else:
+                temp_llm = llm_service
+
+            logger.info(f"Using Ollama provider with model: {request.model}")
+            answer = temp_llm.generate_with_context(
+                question=request.question,
+                context_documents=context_results,
+                max_tokens=request.max_tokens
+            )
 
         if not answer:
             logger.error("LLM failed to generate answer")

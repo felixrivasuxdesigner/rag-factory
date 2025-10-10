@@ -84,6 +84,7 @@ services:
       - OLLAMA_HOST=ollama
       - REDIS_URL=redis://redis:6379/0
       - PYTHONPATH=/app
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-}
     restart: unless-stopped
 
   frontend:

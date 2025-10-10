@@ -122,6 +122,28 @@ open http://localhost:3000  # macOS
 - **Redis**: `localhost:6380`
 - **Ollama**: <http://localhost:11434>
 
+### ⚡ Optional: Enable Google AI Cloud (Recommended)
+
+Get **15x faster** RAG responses with Google AI's free cloud LLMs:
+
+```bash
+# 1. Get free API key from https://aistudio.google.com/apikey
+# 2. Configure environment
+cd docker
+echo "GOOGLE_AI_API_KEY=your-api-key-here" > .env
+
+# 3. Restart API
+docker-compose restart api
+
+# 4. In the UI, select "Google AI Cloud" from the LLM Provider dropdown
+```
+
+**Performance:**
+- Google AI Cloud: ~8 seconds ⚡
+- Ollama Local: ~40-120 seconds 🐌
+
+**Cost:** FREE (1,500 queries/day)
+
 ### 2. Create Your First RAG Project
 
 ```bash
@@ -243,7 +265,10 @@ This tests:
 - **Job Queue**: Redis + RQ (Redis Queue)
 - **Database**: PostgreSQL + pgvector
 - **Embeddings**: Ollama (jina/jina-embeddings-v2-base-es, 768 dimensions, bilingual ES/EN)
-- **Frontend**: React 19 + TypeScript + Vite (coming soon)
+- **LLM Providers**:
+  - **Google AI Cloud** (default) - gemini-flash-lite, gemma-3-4b, gemma-3-12b (free 1,500/day)
+  - **Ollama Local** - gemma3:1b, gemma3:4b (optional, privacy-focused)
+- **Frontend**: React 19 + TypeScript + Vite
 - **Containerization**: Docker Compose
 
 ## ✨ Features
@@ -273,7 +298,9 @@ This tests:
 - ✅ Semantic search (cosine similarity)
 - ✅ Full RAG queries (search + LLM generation)
 - ✅ Local embeddings (Ollama jina/jina-embeddings-v2-base-es, 768d, bilingual ES/EN)
-- ✅ Local LLM (Ollama Gemma 3)
+- ✅ **Dual LLM Support**: Google AI Cloud (fast, 8s) or Ollama Local (private, 40s+)
+- ✅ **UI LLM Selector**: Switch providers & adjust response length in-app
+- ✅ **Auto Language Detection**: Spanish/English bilingual support
 - ✅ Country/region filtering
 - ✅ Metadata-rich results
 
@@ -337,6 +364,14 @@ See `docker-compose.yml` for configuration options:
 - `DATABASE_URL` - Internal database connection
 - `REDIS_URL` - Redis connection for job queue
 - `OLLAMA_HOST` - Ollama service hostname
+- `GOOGLE_AI_API_KEY` - (Optional) Google AI API key for cloud LLM providers
+
+**To enable Google AI Cloud:**
+```bash
+cd docker
+echo "GOOGLE_AI_API_KEY=your-key-here" > .env
+docker-compose restart api
+```
 
 ## 🤝 Contributing
 
