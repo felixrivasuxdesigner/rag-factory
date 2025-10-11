@@ -757,7 +757,7 @@ def rag_query(request: RAGQueryRequest):
         # Convert to SearchResult format
         sources = [
             SearchResult(
-                id=r['id'],
+                id=str(r['id']),  # Convert to string to handle both int and str IDs
                 content=r['content'],
                 metadata=r.get('metadata'),
                 similarity=r['similarity']
