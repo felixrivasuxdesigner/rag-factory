@@ -334,6 +334,18 @@ class VectorDBWriter:
             logger.error(f"Failed to get table stats: {e}", exc_info=True)
             return {}
 
+    def reconnect(self) -> bool:
+        """
+        Refresh the database connection.
+        Useful for long-running operations that may timeout.
+
+        Returns:
+            bool: True if reconnection successful
+        """
+        logger.info("Refreshing database connection...")
+        self.close()
+        return self.connect()
+
     def close(self):
         """Close the database connection."""
         if self.conn:
