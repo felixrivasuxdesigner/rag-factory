@@ -64,6 +64,38 @@ def update_job_progress(job_id: int, **updates):
         conn.close()
 
 
+def is_job_cancelled(job_id: int) -> bool:
+    """
+    Check if a job has been cancelled.
+
+    Args:
+        job_id: The ingestion job ID
+
+    Returns:
+        True if the job status is 'cancelled', False otherwise
+    """
+    conn = get_db_connection()
+    if not conn:
+        logger.error("Failed to connect to internal database for job status check")
+        return False
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM ingestion_jobs WHERE id = %s;", (job_id,))
+            result = cur.fetchone()
+
+            if result and result[0] == 'cancelled':
+                return True
+
+        return False
+
+    except Exception as e:
+        logger.error(f"Error checking job {job_id} status: {e}")
+        return False
+    finally:
+        conn.close()
+
+
 def mark_document_processed(project_id: int, doc_hash: str, status: str, error: str = None):
     """
     Mark a document as processed in the tracking table.
@@ -224,6 +256,11 @@ def ingest_documents_from_source(
 
         # Step 4: Process each document
         for doc in documents:
+            # Check if job has been cancelled
+            if is_job_cancelled(job_id):
+                logger.warning(f"Job {job_id} has been cancelled. Stopping processing.")
+                break
+
             processed += 1
 
             try:

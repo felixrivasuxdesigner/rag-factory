@@ -638,6 +638,193 @@ def get_job_status(job_id: int):
         conn.close()
 
 
+@app.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: int):
+    """
+    Cancel a running job.
+
+    Note: This only marks the job as cancelled in the database.
+    The worker will check this status and stop processing.
+    Already processed documents will remain in the database.
+    """
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Check if job exists and get current status
+            cur.execute("SELECT status FROM ingestion_jobs WHERE id = %s;", (job_id,))
+            result = cur.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            current_status = result[0]
+
+            # Only allow cancellation of queued or running jobs
+            if current_status not in ['queued', 'running']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot cancel job with status '{current_status}'. Only 'queued' or 'running' jobs can be cancelled."
+                )
+
+            # Update job status to cancelled
+            cur.execute("""
+                UPDATE ingestion_jobs
+                SET status = 'cancelled', completed_at = NOW()
+                WHERE id = %s;
+            """, (job_id,))
+            conn.commit()
+
+        return {"message": f"Job {job_id} has been cancelled", "job_id": job_id, "status": "cancelled"}
+
+    finally:
+        conn.close()
+
+
+@app.delete("/jobs/{job_id}")
+def delete_job(job_id: int):
+    """
+    Delete a job from the database.
+
+    This performs a hard delete and removes the job record completely.
+    Use with caution - this action cannot be undone.
+    """
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Check if job exists
+            cur.execute("SELECT status FROM ingestion_jobs WHERE id = %s;", (job_id,))
+            result = cur.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            current_status = result[0]
+
+            # Don't allow deletion of running jobs
+            if current_status == 'running':
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot delete a running job. Cancel it first."
+                )
+
+            # Delete the job
+            cur.execute("DELETE FROM ingestion_jobs WHERE id = %s;", (job_id,))
+            conn.commit()
+
+        return {"message": f"Job {job_id} has been deleted", "job_id": job_id}
+
+    finally:
+        conn.close()
+
+
+@app.post("/jobs/{job_id}/restart")
+def restart_job(job_id: int):
+    """
+    Restart a failed or cancelled job.
+
+    This creates a new job with the same configuration as the original.
+    The new job will skip documents that were already successfully processed.
+    """
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Get original job details
+            cur.execute("""
+                SELECT project_id, source_id, job_type, status
+                FROM ingestion_jobs
+                WHERE id = %s;
+            """, (job_id,))
+            result = cur.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            project_id, source_id, job_type, current_status = result
+
+            # Only allow restart of failed or cancelled jobs
+            if current_status not in ['failed', 'cancelled']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot restart job with status '{current_status}'. Only 'failed' or 'cancelled' jobs can be restarted."
+                )
+
+            # Create new job with same configuration
+            cur.execute("""
+                INSERT INTO ingestion_jobs (project_id, source_id, job_type, status)
+                VALUES (%s, %s, %s, 'queued')
+                RETURNING id;
+            """, (project_id, source_id, job_type))
+            new_job_id = cur.fetchone()[0]
+            conn.commit()
+
+            # Get project and source data for enqueueing
+            cur.execute("""
+                SELECT p.*, s.source_type, s.config
+                FROM rag_projects p
+                JOIN data_sources s ON s.id = %s
+                WHERE p.id = %s;
+            """, (source_id, project_id))
+            result = cur.fetchone()
+
+            if result:
+                columns = [desc[0] for desc in cur.description]
+                project_data = dict(zip(columns, result))
+
+                # Prepare arguments for the worker task
+                target_db_config = {
+                    'host': project_data['target_db_host'],
+                    'port': project_data['target_db_port'],
+                    'database': project_data['target_db_name'],
+                    'user': project_data['target_db_user'],
+                    'password': project_data['target_db_password'],
+                    'table': project_data['target_table_name']
+                }
+
+                embedding_config = {
+                    'model': project_data['embedding_model'],
+                    'dimension': project_data['embedding_dimension'],
+                    'chunk_size': project_data['chunk_size'],
+                    'chunk_overlap': project_data['chunk_overlap']
+                }
+
+                source_config = {
+                    'source_type': project_data['source_type'],
+                    'config': project_data['config']
+                }
+
+                # Enqueue the new job
+                queue = Queue('rag-tasks', connection=redis_conn)
+                queue.enqueue(
+                    'workers.ingestion_tasks.ingest_documents_from_source',
+                    new_job_id,
+                    project_id,
+                    source_id,
+                    source_config,
+                    target_db_config,
+                    embedding_config,
+                    job_timeout='6h'
+                )
+
+        return {
+            "message": f"Job {job_id} has been restarted",
+            "original_job_id": job_id,
+            "new_job_id": new_job_id,
+            "status": "queued"
+        }
+
+    finally:
+        conn.close()
+
+
 @app.get("/projects/{project_id}/jobs", response_model=List[IngestionJobResponse])
 def list_project_jobs(project_id: int, status_filter: str = None, limit: int = 50):
     """List ingestion jobs for a project."""
