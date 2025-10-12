@@ -12,6 +12,7 @@ import psycopg2
 
 from services.embedding_service import EmbeddingService
 from services.vector_db_writer import VectorDBWriter
+from services.content_cache_service import ContentCacheService
 from connectors.registry import ConnectorRegistry
 from processors.document_processor import DocumentProcessor
 from processors.adaptive_chunker import AdaptiveChunker
@@ -142,7 +143,14 @@ def ingest_documents_from_source(
     errors = []
 
     try:
-        # Step 1: Fetch documents from source using ConnectorRegistry
+        # Step 1: Initialize content cache service
+        internal_conn = get_db_connection()
+        cache_service = ContentCacheService(internal_conn) if internal_conn else None
+
+        if cache_service:
+            logger.info(f"✓ Content cache service initialized")
+
+        # Step 2: Fetch documents from source using ConnectorRegistry
         logger.info(f"Fetching documents from {source_config['source_type']}...")
 
         # Use ConnectorRegistry to get the appropriate connector
@@ -152,11 +160,19 @@ def ingest_documents_from_source(
         if not connector_class:
             raise NotImplementedError(f"Source type {source_config['source_type']} not found in registry")
 
-        # Initialize connector with config
-        connector = connector_class(
-            config=source_config['config'],
-            rate_limit_config=source_config.get('rate_limits')
-        )
+        # Initialize connector with config and cache service
+        connector_kwargs = {
+            'config': source_config['config'],
+            'rate_limit_config': source_config.get('rate_limits')
+        }
+
+        # Add cache service for supported connectors (chile_bcn, us_congress, etc.)
+        if cache_service and source_config['source_type'] in ['chile_bcn', 'us_congress']:
+            connector_kwargs['cache_service'] = cache_service
+            connector_kwargs['source_id'] = source_id
+            logger.info(f"✓ Cache enabled for {source_config['source_type']} connector")
+
+        connector = connector_class(**connector_kwargs)
 
         # Fetch documents
         limit = source_config['config'].get('limit', 10)
@@ -173,7 +189,7 @@ def ingest_documents_from_source(
 
         logger.info(f"Fetched {total_documents} documents")
 
-        # Step 2: Initialize services
+        # Step 3: Initialize services
         embedding_service = EmbeddingService(
             model=embedding_config['model'],
             embedding_dimension=embedding_config['dimension']

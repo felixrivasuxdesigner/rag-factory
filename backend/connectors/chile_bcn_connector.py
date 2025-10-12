@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 from typing import Dict, Optional, Any, List
 from connectors.generic_sparql_connector import GenericSPARQLConnector
 from connectors.base_connector import ConnectorMetadata
+from services.content_cache_service import ContentCacheService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,13 +64,16 @@ LIMIT {limit}
             default_rate_limit_preset="conservative"
         )
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, rate_limit_config: Optional[Dict] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None, rate_limit_config: Optional[Dict] = None,
+                 cache_service: Optional[ContentCacheService] = None, source_id: Optional[int] = None):
         """
         Initialize Chile BCN full-text connector.
 
         Args:
             config: Optional configuration dict (only 'limit' is used, default: 25)
             rate_limit_config: Optional rate limiting configuration
+            cache_service: Optional content cache service for caching downloaded XMLs
+            source_id: Source ID for cache lookups
         """
         # Build config for generic SPARQL connector
         sparql_config = {
@@ -88,6 +92,10 @@ LIMIT {limit}
 
         # Initialize parent
         super().__init__(config=sparql_config, rate_limit_config=rate_limit_config)
+
+        # Store cache service
+        self.cache_service = cache_service
+        self.source_id = source_id
 
         logger.info("✓ Chile BCN FULL-TEXT connector initialized")
 
@@ -171,8 +179,11 @@ LIMIT {limit}
 
         logger.info(f"\n📥 Fetched {len(docs)} norms from SPARQL, now downloading FULL TEXT from XML...")
 
-        # Now download full text for each document
+        # Now download full text for each document (with caching)
         enriched_docs = []
+        cache_hits = 0
+        cache_misses = 0
+
         for i, doc in enumerate(docs, 1):
             norm_id = doc['id']
             xml_url = doc.get('metadata', {}).get('xmlDoc')
@@ -184,10 +195,32 @@ LIMIT {limit}
                 enriched_docs.append(doc)
                 continue
 
-            logger.info(f"  [{i}/{len(docs)}] Downloading full text for norm {norm_id} from {xml_url}...")
+            # Check cache first if available
+            full_text = None
+            if self.cache_service and self.source_id:
+                cached = self.cache_service.get_cached_content(self.source_id, norm_id)
+                if cached:
+                    full_text = cached['content']
+                    cache_hits += 1
+                    logger.info(f"  [{i}/{len(docs)}] ✓ Cache HIT for norm {norm_id} ({len(full_text)} chars)")
+                else:
+                    cache_misses += 1
 
-            # Download XML content
-            full_text = self._download_xml_content(xml_url)
+            # Download if not in cache
+            if not full_text:
+                logger.info(f"  [{i}/{len(docs)}] Downloading full text for norm {norm_id} from {xml_url}...")
+                full_text = self._download_xml_content(xml_url)
+
+                # Save to cache if download succeeded
+                if full_text and self.cache_service and self.source_id:
+                    self.cache_service.save_to_cache(
+                        source_id=self.source_id,
+                        external_id=norm_id,
+                        content=full_text,
+                        title=doc['title'],
+                        source_url=xml_url,
+                        source_metadata={'date': doc.get('metadata', {}).get('date')}
+                    )
 
             if full_text:
                 # Replace title-only content with FULL TEXT
@@ -195,7 +228,8 @@ LIMIT {limit}
                 doc['metadata']['has_full_text'] = True
                 doc['metadata']['content_length'] = len(full_text)
                 enriched_docs.append(doc)
-                logger.info(f"    ✓ Enriched: {len(full_text)} characters")
+                if not self.cache_service or cache_misses > 0:
+                    logger.info(f"    ✓ Enriched: {len(full_text)} characters")
             else:
                 # Fallback to title if XML download failed
                 logger.warning(f"    ⚠ Using title as fallback for norm {norm_id}")
@@ -204,7 +238,11 @@ LIMIT {limit}
                 doc['metadata']['content_length'] = len(doc['title'])
                 enriched_docs.append(doc)
 
-        logger.info(f"\n✅ Successfully enriched {len(enriched_docs)} documents with full text")
+        # Log cache statistics
+        if self.cache_service:
+            logger.info(f"\n📊 Cache Statistics: {cache_hits} hits, {cache_misses} misses ({cache_hits/(cache_hits+cache_misses)*100:.1f}% hit rate)")
+
+        logger.info(f"✅ Successfully enriched {len(enriched_docs)} documents with full text")
         return enriched_docs
 
 

@@ -138,6 +138,36 @@ def create_internal_schema(conn):
     );
     """
 
+    # Table 5: Document Content Cache
+    # Caches downloaded document content to avoid re-downloading on job restarts
+    create_content_cache_table = """
+    CREATE TABLE IF NOT EXISTS documents_content_cache (
+        id SERIAL PRIMARY KEY,
+        source_id INTEGER NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+
+        -- Document identification
+        external_id TEXT NOT NULL, -- Original ID from source (e.g., BCN norm ID)
+        content_hash VARCHAR(64) NOT NULL, -- SHA-256 hash for quick comparison
+
+        -- Cached content
+        title TEXT,
+        content TEXT NOT NULL, -- Full document content (XML, JSON, etc.)
+        content_size INTEGER, -- Size in bytes for monitoring
+
+        -- Metadata from source
+        source_url TEXT, -- Original download URL
+        source_metadata JSONB, -- Additional metadata from source
+
+        -- Cache management
+        downloaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        access_count INTEGER DEFAULT 1,
+
+        -- Prevent duplicates per source
+        UNIQUE(source_id, external_id)
+    );
+    """
+
     # Indexes for performance
     create_indexes = [
         "CREATE INDEX IF NOT EXISTS idx_data_sources_project ON data_sources(project_id);",
@@ -146,6 +176,10 @@ def create_internal_schema(conn):
         "CREATE INDEX IF NOT EXISTS idx_documents_status ON documents_tracking(status);",
         "CREATE INDEX IF NOT EXISTS idx_jobs_project ON ingestion_jobs(project_id);",
         "CREATE INDEX IF NOT EXISTS idx_jobs_status ON ingestion_jobs(status);",
+        "CREATE INDEX IF NOT EXISTS idx_cache_source ON documents_content_cache(source_id);",
+        "CREATE INDEX IF NOT EXISTS idx_cache_external_id ON documents_content_cache(external_id);",
+        "CREATE INDEX IF NOT EXISTS idx_cache_hash ON documents_content_cache(content_hash);",
+        "CREATE INDEX IF NOT EXISTS idx_cache_accessed ON documents_content_cache(last_accessed_at);",
     ]
 
     try:
@@ -163,6 +197,9 @@ def create_internal_schema(conn):
 
             cur.execute(create_jobs_table)
             logger.info("✓ Created ingestion_jobs table")
+
+            cur.execute(create_content_cache_table)
+            logger.info("✓ Created documents_content_cache table")
 
             for idx_query in create_indexes:
                 cur.execute(idx_query)
