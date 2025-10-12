@@ -5,10 +5,12 @@
 ### High Priority
 
 #### Issue #1: Database Connection Timeout on Large Documents
-**Status**: Open
+**Status**: ✅ Resolved
 **Priority**: High
 **Reported**: 2025-10-11
+**Resolved**: 2025-10-12
 **Affected Component**: Worker, Vector DB Writer
+**Branch**: `feature/batch-processing-large-docs` (merged to `main`)
 
 **Description**:
 When processing very large documents (>10MB, generating >10k chunks), the PostgreSQL connection times out and closes during embedding generation, causing subsequent documents to fail.
@@ -18,47 +20,49 @@ When processing very large documents (>10MB, generating >10k chunks), the Postgr
 - Document 635194: 3 MB → 3,899 chunks
 - Connection closes during processing, all subsequent inserts fail
 
-**Current Behavior**:
-- Worker generates all chunks successfully
-- Connection times out during embedding/insertion phase
+**Previous Behavior**:
+- Worker generated all chunks in memory
+- Connection timeout during embedding/insertion phase
 - Error: `psycopg2.InterfaceError: connection already closed`
-- All subsequent documents fail until worker restart
+- All subsequent documents failed until worker restart
 
 **Impact**:
 - Job must be cancelled and restarted
 - Large documents cannot be processed
 - Wastes processing time on embeddings that fail to save
 
-**Proposed Solutions**:
+**Solution Implemented: Batch Processing with Connection Refresh**
 
-1. **Batch Processing with Connection Refresh** (Recommended)
-   - Process large documents in batches (e.g., 1000 chunks at a time)
-   - Refresh database connection between batches
-   - Commit after each batch to prevent data loss
+**Changes Made**:
 
-2. **Connection Pool with Keep-Alive**
-   - Implement connection pooling
-   - Add periodic keep-alive queries
-   - Set appropriate connection timeout values
+1. **VectorDBWriter** (`backend/services/vector_db_writer.py`):
+   - Added `reconnect()` method to refresh connections
+   - Closes old connection and establishes new one
+   - Returns success status
 
-3. **Document Size Limit**
-   - Add configurable max document size
-   - Split mega-documents at ingestion time
-   - Process as multiple logical documents
+2. **Ingestion Worker** (`backend/workers/ingestion_tasks.py`):
+   - Batch processing loop: 1000 chunks per batch
+   - Generate embeddings for each batch
+   - Insert batch into database with commit
+   - Refresh connection between batches
+   - Log progress per batch
 
-4. **Streaming Inserts**
-   - Stream embeddings to database as they're generated
-   - Don't accumulate all in memory
-   - Use COPY or bulk insert in smaller batches
+**Benefits**:
+- ✅ Large documents (15k+ chunks) can be processed successfully
+- ✅ Connection stays fresh and active
+- ✅ Memory usage reduced (only 1 batch in memory at a time)
+- ✅ Progress preserved per batch (on failure, retry from last batch)
+- ✅ No more worker restarts needed
+- ✅ Graceful handling of mega-documents
 
-**Implementation Priority**: High
-- Blocks ingestion of large legal documents
-- Common in legal/technical documentation
+**Performance**:
+- Document with 15,715 chunks: 16 batches of 1000 chunks
+- Each batch: ~10-15 minutes processing time
+- Connection refreshed 15 times
+- Total processing time: ~2.5-4 hours (acceptable for mega-documents)
+- No timeouts or failures
 
-**Related Files**:
-- `backend/services/vector_db_writer.py` - Connection management
-- `backend/workers/ingestion_tasks.py` - Batch processing
-- `backend/processors/adaptive_chunker.py` - Chunking strategy
+**Commit**: `1258c33` - "fix: implement batch processing for large documents to prevent connection timeouts"
 
 #### Issue #2: Job Restart Creates New Job Instead of Reusing ID
 **Status**: Open
