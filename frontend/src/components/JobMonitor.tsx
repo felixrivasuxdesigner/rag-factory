@@ -11,6 +11,8 @@ import {
   Trash,
   ArrowClockwise
 } from '@phosphor-icons/react'
+import { useToast } from '../hooks/useToast'
+import ConfirmDialog from './ConfirmDialog'
 
 interface IngestionJob {
   id: number
@@ -33,11 +35,22 @@ interface JobMonitorProps {
   onJobComplete?: () => void
 }
 
+interface ConfirmDialogState {
+  isOpen: boolean
+  title: string
+  message: string
+  confirmText: string
+  variant: 'danger' | 'primary' | 'warning'
+  onConfirm: () => void
+}
+
 export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps) {
   const [jobs, setJobs] = useState<IngestionJob[]>([])
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null)
 
+  const { showToast, ToastContainer } = useToast()
   const API_URL = 'http://localhost:8000'
 
   useEffect(() => {
@@ -141,66 +154,92 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
     })
   }
 
-  const handleCancelJob = async (jobId: number) => {
-    if (!confirm(`Are you sure you want to cancel Job #${jobId}?`)) return
+  const handleCancelJob = (jobId: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Cancel Job',
+      message: `Are you sure you want to cancel Job #${jobId}? This will stop the processing immediately.`,
+      confirmText: 'Cancel Job',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          const response = await fetch(`${API_URL}/jobs/${jobId}/cancel`, {
+            method: 'POST'
+          })
 
-    try {
-      const response = await fetch(`${API_URL}/jobs/${jobId}/cancel`, {
-        method: 'POST'
-      })
-
-      if (response.ok) {
-        fetchJobs() // Refresh jobs list
-      } else {
-        const error = await response.json()
-        alert(`Failed to cancel job: ${error.detail}`)
+          if (response.ok) {
+            showToast('Job cancelled successfully!', 'success')
+            fetchJobs() // Refresh jobs list
+          } else {
+            const error = await response.json()
+            showToast(`Failed to cancel job: ${error.detail}`, 'error')
+          }
+        } catch (error) {
+          console.error('Failed to cancel job:', error)
+          showToast('Failed to cancel job. Please try again.', 'error')
+        }
       }
-    } catch (error) {
-      console.error('Failed to cancel job:', error)
-      alert('Failed to cancel job')
-    }
+    })
   }
 
-  const handleRestartJob = async (jobId: number) => {
-    if (!confirm(`Restart Job #${jobId}? This will create a new job and skip already processed documents.`)) return
+  const handleRestartJob = (jobId: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Restart Job',
+      message: `Restart Job #${jobId}? This will create a new job and skip already processed documents.`,
+      confirmText: 'Restart Job',
+      variant: 'primary',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          const response = await fetch(`${API_URL}/jobs/${jobId}/restart`, {
+            method: 'POST'
+          })
 
-    try {
-      const response = await fetch(`${API_URL}/jobs/${jobId}/restart`, {
-        method: 'POST'
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        alert(`Job restarted successfully! New Job ID: #${data.new_job_id}`)
-        fetchJobs() // Refresh jobs list
-      } else {
-        const error = await response.json()
-        alert(`Failed to restart job: ${error.detail}`)
+          if (response.ok) {
+            const data = await response.json()
+            showToast(`Job restarted successfully! New Job ID: #${data.new_job_id}`, 'success')
+            fetchJobs() // Refresh jobs list
+          } else {
+            const error = await response.json()
+            showToast(`Failed to restart job: ${error.detail}`, 'error')
+          }
+        } catch (error) {
+          console.error('Failed to restart job:', error)
+          showToast('Failed to restart job. Please try again.', 'error')
+        }
       }
-    } catch (error) {
-      console.error('Failed to restart job:', error)
-      alert('Failed to restart job')
-    }
+    })
   }
 
-  const handleDeleteJob = async (jobId: number) => {
-    if (!confirm(`Are you sure you want to delete Job #${jobId}? This action cannot be undone.`)) return
+  const handleDeleteJob = (jobId: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Job',
+      message: `Are you sure you want to delete Job #${jobId}? This action cannot be undone.`,
+      confirmText: 'Delete Job',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          const response = await fetch(`${API_URL}/jobs/${jobId}`, {
+            method: 'DELETE'
+          })
 
-    try {
-      const response = await fetch(`${API_URL}/jobs/${jobId}`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        fetchJobs() // Refresh jobs list
-      } else {
-        const error = await response.json()
-        alert(`Failed to delete job: ${error.detail}`)
+          if (response.ok) {
+            showToast('Job deleted successfully!', 'success')
+            fetchJobs() // Refresh jobs list
+          } else {
+            const error = await response.json()
+            showToast(`Failed to delete job: ${error.detail}`, 'error')
+          }
+        } catch (error) {
+          console.error('Failed to delete job:', error)
+          showToast('Failed to delete job. Please try again.', 'error')
+        }
       }
-    } catch (error) {
-      console.error('Failed to delete job:', error)
-      alert('Failed to delete job')
-    }
+    })
   }
 
   if (loading) {
@@ -349,6 +388,21 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
           )
         })}
       </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer />
+
+      {/* Confirmation Dialog */}
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          variant={confirmDialog.variant}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
     </div>
   )
 }
