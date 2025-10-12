@@ -132,9 +132,10 @@ Jobs created via the restart endpoint show `total_documents: 0` and `processed_d
 - `frontend/src/components/JobMonitor.tsx` - Progress display
 
 #### Issue #4: Connector Re-downloads All Documents on Every Job
-**Status**: Open
+**Status**: ✅ Resolved
 **Priority**: High
 **Reported**: 2025-10-12
+**Resolved**: 2025-10-12
 **Affected Component**: Connectors, Job Management
 
 **Description**:
@@ -193,6 +194,42 @@ Every time a new job is created, the connector re-downloads ALL documents from t
 - Total wasted downloads: ~277,000 documents
 - Estimated wasted time: ~12 hours of downloading
 
+**Resolution** (2025-10-12):
+✅ **Implemented Solution #1: Document Content Cache**
+
+**What was implemented:**
+1. **Database**: New table `documents_content_cache` with:
+   - Full content storage with SHA-256 hash
+   - Access tracking (access_count, last_accessed_at)
+   - Source metadata and URLs
+   - Optimized indexes for fast lookups
+
+2. **Service**: `ContentCacheService` with methods:
+   - `get_cached_content()` - Retrieves from cache (updates stats)
+   - `save_to_cache()` - Saves with automatic upsert
+   - `get_cache_stats()` - Usage statistics
+   - `clear_old_cache()` - Automatic cleanup
+
+3. **Connector Integration**: Modified `ChileBCNConnector`:
+   - Checks cache BEFORE downloading XML
+   - Saves automatically after successful download
+   - Logs cache hits/misses with statistics
+   - Reports cache hit rate at job completion
+
+4. **Worker Integration**: Updated `ingestion_tasks.py`:
+   - Initializes cache service automatically
+   - Passes cache to supported connectors (chile_bcn, us_congress)
+   - Transparent operation without API changes
+
+**Performance Impact:**
+- Before: 15-20 min downloading 5889 documents every job
+- After: Cache hit = <1 sec per document
+- Expected: 90-95% reduction in download time on re-runs
+- Ideal for: Job restarts, incremental syncs, scheduled jobs
+
+**Branch**: `feature/document-content-cache` → `main` → `journey-law-production`
+**Commits**: c3ff05c, 757237b
+
 ---
 
 ## 🚀 Feature Requests
@@ -226,6 +263,80 @@ Every time a new job is created, the connector re-downloads ALL documents from t
 - Fix restart behavior to reuse job ID
 - Fix progress tracking for restarted jobs
 - Create PR to merge to `main` for community benefit
+
+### In Progress
+
+#### Feature: Job Control UI Improvements
+**Status**: 🚧 In Progress
+**Branch**: `feature/job-ui-improvements`
+**Priority**: Medium
+**Started**: 2025-10-12
+**Affected Component**: Frontend
+
+**Description**:
+Replace browser-native `alert()` and `confirm()` dialogs with user-friendly Toast notifications and Modal confirmation dialogs for job control actions (cancel, restart, delete).
+
+**Current State**:
+1. ✅ Created `Toast.tsx` component for notifications
+   - Success, error, warning, info variants
+   - Auto-dismiss with configurable duration
+   - Close button with smooth animations
+   - Phosphor icons integration
+
+2. ✅ Created `ConfirmDialog.tsx` component for confirmations
+   - Modal overlay with backdrop click handling
+   - Customizable title, message, button text
+   - Variant support (danger, primary, warning)
+   - Accessible close button
+
+3. ✅ Created `useToast` custom hook
+   - Toast state management
+   - showToast() helper method
+   - ToastContainer component
+   - Auto-cleanup on dismiss
+
+4. ✅ Copied `JobMonitor.tsx` from journey-law-production
+   - Has cancel/restart/delete control buttons
+   - Currently uses alert()/confirm() (needs replacement)
+
+**Pending Tasks**:
+- [ ] Integrate useToast hook into JobMonitor
+- [ ] Replace alert() calls with showToast()
+- [ ] Replace confirm() calls with ConfirmDialog
+- [ ] Add CSS styles for toast and modal components
+- [ ] Test all job actions in browser
+- [ ] Merge to main when complete
+
+**Implementation Details**:
+```typescript
+// Example integration needed:
+const { showToast, ToastContainer } = useToast()
+const [confirmDialog, setConfirmDialog] = useState(null)
+
+// Replace alert with toast:
+showToast('Job cancelled successfully!', 'success')
+showToast('Failed to cancel job', 'error')
+
+// Replace confirm with modal:
+<ConfirmDialog
+  title="Cancel Job"
+  message={`Are you sure you want to cancel Job #${jobId}?`}
+  variant="danger"
+  onConfirm={handleConfirm}
+  onCancel={handleCancel}
+/>
+```
+
+**Related Files**:
+- `frontend/src/components/Toast.tsx` (new)
+- `frontend/src/components/ConfirmDialog.tsx` (new)
+- `frontend/src/hooks/useToast.tsx` (new)
+- `frontend/src/components/JobMonitor.tsx` (needs integration)
+
+**Branch Status**:
+- Last commit: `f0eaeab` - "feat: add job control UI components and improved notifications"
+- Components created but not yet integrated
+- Ready for integration work in next session
 
 ---
 
