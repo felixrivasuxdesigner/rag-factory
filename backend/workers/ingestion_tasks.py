@@ -296,41 +296,66 @@ def ingest_documents_from_source(
                     chunk_size=embedding_config.get('chunk_size', 1000)
                 )
 
-                # Generate embeddings for chunks
-                chunk_embeddings = []
-                for chunk_dict in chunk_dicts:
-                    embedding = embedding_service.generate_embedding(chunk_dict['content'])
-                    if embedding:
-                        # Build metadata from chunk and document
-                        metadata = {
-                            **doc,
-                            **chunk_dict['metadata'],  # Includes chunking_strategy, chunk_index, etc.
-                            'content_hash': content_hash,
-                            'source_id': source_id
-                        }
+                # Generate embeddings and insert in batches for large documents
+                # This prevents connection timeouts and memory issues
+                BATCH_SIZE = 1000  # Process 1000 chunks at a time
+                total_chunks = len(chunk_dicts)
+                chunks_inserted = 0
 
-                        # Add country/region information from source_config
-                        if source_config.get('country_code'):
-                            metadata['country_code'] = source_config['country_code']
-                        if source_config.get('region'):
-                            metadata['region'] = source_config['region']
-                        if source_config.get('tags'):
-                            metadata['tags'] = source_config['tags']
+                logger.info(f"Processing {total_chunks} chunks for document {doc.get('id')} in batches of {BATCH_SIZE}")
 
-                        chunk_embeddings.append({
-                            'id': chunk_dict['id'],  # Already has format: doc_id_chunk_N
-                            'content': chunk_dict['content'],
-                            'embedding': embedding,
-                            'metadata': metadata
-                        })
-                    else:
-                        logger.warning(f"Failed to generate embedding for chunk {chunk_dict['id']}")
+                for batch_start in range(0, total_chunks, BATCH_SIZE):
+                    batch_end = min(batch_start + BATCH_SIZE, total_chunks)
+                    batch_chunks = chunk_dicts[batch_start:batch_end]
 
-                if not chunk_embeddings:
+                    # Generate embeddings for this batch
+                    chunk_embeddings = []
+                    for chunk_dict in batch_chunks:
+                        embedding = embedding_service.generate_embedding(chunk_dict['content'])
+                        if embedding:
+                            # Build metadata from chunk and document
+                            metadata = {
+                                **doc,
+                                **chunk_dict['metadata'],  # Includes chunking_strategy, chunk_index, etc.
+                                'content_hash': content_hash,
+                                'source_id': source_id
+                            }
+
+                            # Add country/region information from source_config
+                            if source_config.get('country_code'):
+                                metadata['country_code'] = source_config['country_code']
+                            if source_config.get('region'):
+                                metadata['region'] = source_config['region']
+                            if source_config.get('tags'):
+                                metadata['tags'] = source_config['tags']
+
+                            chunk_embeddings.append({
+                                'id': chunk_dict['id'],  # Already has format: doc_id_chunk_N
+                                'content': chunk_dict['content'],
+                                'embedding': embedding,
+                                'metadata': metadata
+                            })
+                        else:
+                            logger.warning(f"Failed to generate embedding for chunk {chunk_dict['id']}")
+
+                    if not chunk_embeddings:
+                        logger.warning(f"No embeddings generated for batch {batch_start//BATCH_SIZE + 1}")
+                        continue
+
+                    # Insert this batch into user's vector DB
+                    writer.insert_vectors(chunk_embeddings)
+                    chunks_inserted += len(chunk_embeddings)
+
+                    # Refresh connection after each batch to prevent timeouts
+                    if batch_end < total_chunks:
+                        logger.info(f"Batch {batch_start//BATCH_SIZE + 1}/{(total_chunks + BATCH_SIZE - 1)//BATCH_SIZE} complete. Refreshing connection...")
+                        if not writer.reconnect():
+                            raise RuntimeError("Failed to reconnect to target database after batch")
+
+                if chunks_inserted == 0:
                     raise ValueError("Failed to generate any embeddings for document")
 
-                # Insert into user's vector DB
-                writer.insert_vectors(chunk_embeddings)
+                logger.info(f"✓ Inserted {chunks_inserted}/{total_chunks} chunks for document {doc.get('id')}")
 
                 # Mark as successfully processed
                 mark_document_processed(project_id, content_hash, 'completed')
