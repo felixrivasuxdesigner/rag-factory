@@ -1130,6 +1130,50 @@ button:disabled {
   font-size: 0.85rem;
 }
 
+.job-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.job-actions .btn-icon {
+  padding: 0.375rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.job-actions .btn-cancel {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.job-actions .btn-cancel:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.05);
+}
+
+.job-actions .btn-restart {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.job-actions .btn-restart:hover {
+  background: rgba(59, 130, 246, 0.2);
+  transform: scale(1.05);
+}
+
+.job-actions .btn-delete {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+.job-actions .btn-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  transform: scale(1.05);
+}
+
 .badge-success {
   background: #10b981;
 }
