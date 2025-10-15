@@ -26,6 +26,7 @@ RAG Factory is a **complete platform** for developers, researchers, and teams wh
 - **🗄️ Your Database**: Vectors stored in *your* PostgreSQL — you control everything
 - **🌍 Multi-Jurisdiction**: Built-in country/region tagging for global applications
 - **⚡ Production-Ready**: Deduplication, retry logic, rate limiting, error handling
+- **🌐 MCP Server**: Expose your RAG as tools for AI assistants (Claude Desktop, ChatGPT, etc.)
 
 ## 🏗️ Architecture
 
@@ -203,7 +204,44 @@ curl "http://localhost:8000/projects/1/stats"
 
 - **[API Usage Guide](API_USAGE.md)** - Complete API reference with examples
 - **[CLAUDE.md](CLAUDE.md)** - Technical documentation for developers
+- **[MCP Server Guide](MCP_SERVER.md)** - 🆕 Expose RAG to AI assistants (Claude Desktop, ChatGPT, etc.)
 - **[Interactive API Docs](http://localhost:8000/docs)** - Swagger UI (when running)
+
+## 🌐 MCP Server - Share RAG with AI Assistants
+
+**NEW!** Make your RAG Factory knowledge bases available to any AI assistant via Model Context Protocol (MCP).
+
+### Quick Setup
+
+```bash
+# Install MCP package
+pip install mcp
+
+# Run setup script
+./setup-mcp.sh
+
+# Restart Claude Desktop
+# Done! Ask Claude to "list available RAG projects"
+```
+
+### What Can AI Assistants Do?
+
+Once connected, AI assistants can:
+- 🔍 **Search your knowledge bases** - "Find legal precedents about immigration in Chile"
+- 📖 **Get contextual answers** - Automatically fetch relevant context for questions
+- 📊 **Access project stats** - Check document counts, sizes, last updates
+- 🗂️ **List projects** - Discover what knowledge bases are available
+
+### Example Conversation with Claude Desktop
+
+**You:** "Search the Chilean immigration law RAG for visa requirements for tech workers"
+
+**Claude:** *Uses `rag_search` tool automatically*
+"Based on the Chilean immigration law database, here are the visa requirements..."
+
+### Learn More
+
+See **[MCP_SERVER.md](MCP_SERVER.md)** for complete documentation, examples, and troubleshooting.
 
 ## 🌍 Multi-Country Example
 
