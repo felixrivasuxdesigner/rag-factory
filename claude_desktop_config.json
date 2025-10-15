@@ -1,15 +1,14 @@
 {
   "mcpServers": {
     "rag-factory": {
-      "command": "/path/to/rag-factory/venv-mcp/bin/python",
+      "command": "/Users/felixrivas/Projects/rag-factory/venv-mcp/bin/python",
       "args": [
-        "/path/to/rag-factory/backend/mcp/server.py"
+        "/Users/felixrivas/Projects/rag-factory/backend/mcp/server.py"
       ],
       "env": {
         "DATABASE_URL": "postgresql://user:password@localhost:5433/rag_factory_db",
         "OLLAMA_HOST": "localhost"
-      },
-      "description": "RAG Factory - Search and query multiple RAG knowledge bases"
+      }
     }
   }
 }
