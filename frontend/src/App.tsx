@@ -664,39 +664,6 @@ function App() {
         )}
       </section>
 
-      {/* Project Statistics */}
-      {selectedProject && stats && (
-        <section className="stats-section">
-          <h2>Project Statistics</h2>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-value">{stats.total_documents}</div>
-              <div className="stat-label">Total Documents</div>
-            </div>
-            <div className="stat-card success">
-              <div className="stat-value">{stats.documents_completed}</div>
-              <div className="stat-label">Completed</div>
-            </div>
-            <div className="stat-card error">
-              <div className="stat-value">{stats.documents_failed}</div>
-              <div className="stat-label">Failed</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{stats.total_jobs}</div>
-              <div className="stat-label">Total Jobs</div>
-            </div>
-            <div className="stat-card success">
-              <div className="stat-value">{stats.jobs_completed}</div>
-              <div className="stat-label">Jobs Completed</div>
-            </div>
-            <div className="stat-card error">
-              <div className="stat-value">{stats.jobs_failed}</div>
-              <div className="stat-label">Jobs Failed</div>
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Project Insights & Visualizations */}
       {selectedProject && (
         <ProjectInsights projectId={selectedProject} />

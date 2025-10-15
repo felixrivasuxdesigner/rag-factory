@@ -1540,10 +1540,6 @@ button:disabled {
 /* Phase 4.4: Data Visualization Styles */
 .project-insights {
   margin-bottom: 2rem;
-  background: #f9fafb;
-  border-radius: 12px;
-  padding: 2rem;
-  border: 1px solid #e5e7eb;
 }
 
 .insights-loading,
@@ -1555,21 +1551,9 @@ button:disabled {
 
 .insights-metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
-}
-
-@media (max-width: 1200px) {
-  .insights-metrics {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .insights-metrics {
-    grid-template-columns: 1fr;
-  }
 }
 
 .metric-card {
