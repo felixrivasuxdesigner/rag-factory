@@ -825,6 +825,190 @@ def restart_job(job_id: int):
         conn.close()
 
 
+@app.post("/jobs/{job_id}/pause")
+def pause_job(job_id: int):
+    """
+    Pause a running job.
+
+    The job will be marked as 'paused' and the worker will stop processing it.
+    It can be resumed later to continue from where it left off.
+    """
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Check if job exists and get current status
+            cur.execute("SELECT status FROM ingestion_jobs WHERE id = %s;", (job_id,))
+            result = cur.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            current_status = result[0]
+
+            # Only allow pausing running jobs
+            if current_status != 'running':
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot pause job with status '{current_status}'. Only 'running' jobs can be paused."
+                )
+
+            # Update job status to paused
+            cur.execute("""
+                UPDATE ingestion_jobs
+                SET status = 'paused'
+                WHERE id = %s;
+            """, (job_id,))
+            conn.commit()
+
+        return {"message": f"Job {job_id} has been paused", "job_id": job_id, "status": "paused"}
+
+    finally:
+        conn.close()
+
+
+@app.post("/jobs/{job_id}/resume")
+def resume_job(job_id: int):
+    """
+    Resume a paused job.
+
+    The job will be marked as 'queued' and will be picked up by a worker
+    to continue processing from where it left off.
+    """
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Check if job exists and get current status
+            cur.execute("SELECT status FROM ingestion_jobs WHERE id = %s;", (job_id,))
+            result = cur.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            current_status = result[0]
+
+            # Only allow resuming paused jobs
+            if current_status != 'paused':
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot resume job with status '{current_status}'. Only 'paused' jobs can be resumed."
+                )
+
+            # Update job status to queued so it can be picked up by worker
+            cur.execute("""
+                UPDATE ingestion_jobs
+                SET status = 'queued'
+                WHERE id = %s;
+            """, (job_id,))
+            conn.commit()
+
+        return {"message": f"Job {job_id} has been resumed", "job_id": job_id, "status": "queued"}
+
+    finally:
+        conn.close()
+
+
+@app.post("/jobs/{job_id}/start")
+def start_job(job_id: int):
+    """
+    Start a pending job.
+
+    Enqueues the job to be processed by a worker. This is useful for jobs
+    that were created but not automatically started (e.g., manually created jobs).
+    """
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        with conn.cursor() as cur:
+            # Get job details
+            cur.execute("""
+                SELECT j.status, j.project_id, j.source_id, j.job_type,
+                       p.target_db_host, p.target_db_port, p.target_db_name,
+                       p.target_db_user, p.target_db_password, p.target_table_name,
+                       p.embedding_model, p.embedding_dimension, p.chunk_size, p.chunk_overlap,
+                       s.source_type, s.config
+                FROM ingestion_jobs j
+                JOIN rag_projects p ON j.project_id = p.id
+                JOIN data_sources s ON j.source_id = s.id
+                WHERE j.id = %s;
+            """, (job_id,))
+            result = cur.fetchone()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            current_status = result[0]
+
+            # Only allow starting pending jobs
+            if current_status != 'pending':
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot start job with status '{current_status}'. Only 'pending' jobs can be started."
+                )
+
+            # Extract job configuration
+            project_id = result[1]
+            source_id = result[2]
+
+            # Prepare configurations for worker
+            source_config = {
+                'source_type': result[14],
+                'config': result[15]
+            }
+
+            target_db_config = {
+                'host': result[4],
+                'port': result[5],
+                'database': result[6],
+                'user': result[7],
+                'password': result[8],
+                'table_name': result[9]
+            }
+
+            embedding_config = {
+                'model': result[10],
+                'dimension': result[11],
+                'chunk_size': result[12],
+                'chunk_overlap': result[13]
+            }
+
+            # Update job status to queued
+            cur.execute("""
+                UPDATE ingestion_jobs
+                SET status = 'queued'
+                WHERE id = %s;
+            """, (job_id,))
+            conn.commit()
+
+            # Enqueue the job
+            from workers.ingestion_tasks import ingest_documents_from_source
+
+            task_queue.enqueue(
+                ingest_documents_from_source,
+                job_id,
+                project_id,
+                source_id,
+                source_config,
+                target_db_config,
+                embedding_config,
+                job_timeout=600
+            )
+
+            logger.info(f"✓ Started and enqueued job {job_id}")
+
+        return {"message": f"Job {job_id} has been started", "job_id": job_id, "status": "queued"}
+
+    finally:
+        conn.close()
+
+
 @app.get("/projects/{project_id}/jobs")
 def list_project_jobs(
     project_id: int,

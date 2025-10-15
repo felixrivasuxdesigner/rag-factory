@@ -9,7 +9,8 @@ import {
   Play,
   StopCircle,
   Trash,
-  ArrowClockwise
+  ArrowClockwise,
+  PlayCircle
 } from '@phosphor-icons/react'
 import { useToast } from '../hooks/useToast'
 import ConfirmDialog from './ConfirmDialog'
@@ -142,6 +143,8 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
         return `${baseClasses} badge-running`
       case 'pending':
         return `${baseClasses} badge-pending`
+      case 'paused':
+        return `${baseClasses} badge-paused`
       default:
         return baseClasses
     }
@@ -262,6 +265,93 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
     })
   }
 
+  const handlePauseJob = (jobId: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Pause Job',
+      message: `Are you sure you want to pause Job #${jobId}? You can resume it later.`,
+      confirmText: 'Pause Job',
+      variant: 'warning',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          const response = await fetch(`${API_URL}/jobs/${jobId}/pause`, {
+            method: 'POST'
+          })
+
+          if (response.ok) {
+            showToast('Job paused successfully!', 'success')
+            fetchJobs()
+          } else {
+            const error = await response.json()
+            showToast(`Failed to pause job: ${error.detail}`, 'error')
+          }
+        } catch (error) {
+          console.error('Failed to pause job:', error)
+          showToast('Failed to pause job. Please try again.', 'error')
+        }
+      }
+    })
+  }
+
+  const handleResumeJob = (jobId: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Resume Job',
+      message: `Resume Job #${jobId}? It will continue from where it was paused.`,
+      confirmText: 'Resume Job',
+      variant: 'primary',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          const response = await fetch(`${API_URL}/jobs/${jobId}/resume`, {
+            method: 'POST'
+          })
+
+          if (response.ok) {
+            showToast('Job resumed successfully!', 'success')
+            fetchJobs()
+          } else {
+            const error = await response.json()
+            showToast(`Failed to resume job: ${error.detail}`, 'error')
+          }
+        } catch (error) {
+          console.error('Failed to resume job:', error)
+          showToast('Failed to resume job. Please try again.', 'error')
+        }
+      }
+    })
+  }
+
+  const handleStartJob = (jobId: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Start Job',
+      message: `Start Job #${jobId}? It will be queued for processing.`,
+      confirmText: 'Start Job',
+      variant: 'primary',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          const response = await fetch(`${API_URL}/jobs/${jobId}/start`, {
+            method: 'POST'
+          })
+
+          if (response.ok) {
+            showToast('Job started successfully!', 'success')
+            fetchJobs()
+          } else {
+            const error = await response.json()
+            showToast(`Failed to start job: ${error.detail}`, 'error')
+          }
+        } catch (error) {
+          console.error('Failed to start job:', error)
+          showToast('Failed to start job. Please try again.', 'error')
+        }
+      }
+    })
+  }
+
   if (loading) {
     return (
       <div className="job-monitor loading">
@@ -319,7 +409,41 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
                 <div className="job-meta">
                   <span className="job-date">{formatDateTime(job.created_at)}</span>
                   <div className="job-actions">
-                    {(job.status === 'running' || job.status === 'pending' || job.status === 'queued') && (
+                    {/* Start button for pending jobs */}
+                    {job.status === 'pending' && (
+                      <button
+                        className="btn-icon btn-start"
+                        onClick={() => handleStartJob(job.id)}
+                        title="Start job"
+                      >
+                        <PlayCircle size={18} weight="fill" />
+                      </button>
+                    )}
+
+                    {/* Pause button for running jobs */}
+                    {job.status === 'running' && (
+                      <button
+                        className="btn-icon btn-pause"
+                        onClick={() => handlePauseJob(job.id)}
+                        title="Pause job"
+                      >
+                        <Pause size={18} weight="fill" />
+                      </button>
+                    )}
+
+                    {/* Resume button for paused jobs */}
+                    {job.status === 'paused' && (
+                      <button
+                        className="btn-icon btn-resume"
+                        onClick={() => handleResumeJob(job.id)}
+                        title="Resume job"
+                      >
+                        <Play size={18} weight="fill" />
+                      </button>
+                    )}
+
+                    {/* Cancel button for active jobs */}
+                    {(job.status === 'running' || job.status === 'pending' || job.status === 'queued' || job.status === 'paused') && (
                       <button
                         className="btn-icon btn-cancel"
                         onClick={() => handleCancelJob(job.id)}
@@ -328,6 +452,8 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
                         <StopCircle size={18} weight="fill" />
                       </button>
                     )}
+
+                    {/* Restart button for failed/cancelled jobs */}
                     {(job.status === 'failed' || job.status === 'cancelled') && (
                       <button
                         className="btn-icon btn-restart"
@@ -337,7 +463,9 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
                         <ArrowClockwise size={18} weight="bold" />
                       </button>
                     )}
-                    {(job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') && (
+
+                    {/* Delete button for finished jobs */}
+                    {(job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled' || job.status === 'paused') && (
                       <button
                         className="btn-icon btn-delete"
                         onClick={() => handleDeleteJob(job.id)}
