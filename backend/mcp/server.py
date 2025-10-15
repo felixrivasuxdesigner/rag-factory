@@ -17,15 +17,15 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# MCP SDK imports
+# MCP SDK imports (MUST come before path modification to avoid shadowing)
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError:
     print("Error: mcp package not installed. Install with: pip install 'mcp[cli]'", file=sys.stderr)
     sys.exit(1)
+
+# Add parent directory to path for RAG Factory imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # RAG Factory imports
 from core.database import get_db_connection
