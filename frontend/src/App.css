@@ -1540,6 +1540,10 @@ button:disabled {
 /* Phase 4.4: Data Visualization Styles */
 .project-insights {
   margin-bottom: 2rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 2rem;
+  border: 1px solid #e5e7eb;
 }
 
 .insights-loading,
@@ -1551,9 +1555,21 @@ button:disabled {
 
 .insights-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   margin-bottom: 2rem;
+}
+
+@media (max-width: 1200px) {
+  .insights-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .insights-metrics {
+    grid-template-columns: 1fr;
+  }
 }
 
 .metric-card {
@@ -1866,10 +1882,6 @@ button:disabled {
 
 /* Responsive adjustments for visualizations */
 @media (max-width: 768px) {
-  .insights-metrics {
-    grid-template-columns: 1fr;
-  }
-
   .bar-chart {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -2268,6 +2280,170 @@ button:disabled {
 
   .toast {
     min-width: auto;
+    width: 100%;
+  }
+}
+
+/* ============================================================================
+   Pagination Component Styles
+   ============================================================================ */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1rem;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  border-radius: 0 0 12px 12px;
+  margin-top: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pagination-info {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-pages {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0.5rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+.pagination-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f9fafb;
+}
+
+.pagination-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: white;
+  font-weight: 600;
+}
+
+.pagination-btn.active:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #65408a 100%);
+}
+
+.pagination-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  color: #9ca3af;
+  font-weight: 600;
+  user-select: none;
+}
+
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-size label {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.pagination-size-select {
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pagination-size-select:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.pagination-size-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Mobile Responsive for Pagination */
+@media (max-width: 768px) {
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .pagination-info {
+    text-align: center;
+  }
+
+  .pagination-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .pagination-size {
+    justify-content: center;
+  }
+
+  .pagination-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination-pages {
+    display: none;
+  }
+
+  .pagination-controls {
+    justify-content: space-between;
     width: 100%;
   }
 }
