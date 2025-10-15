@@ -662,11 +662,11 @@ def cancel_job(job_id: int):
 
             current_status = result[0]
 
-            # Only allow cancellation of queued or running jobs
-            if current_status not in ['queued', 'running']:
+            # Only allow cancellation of pending, queued, or running jobs
+            if current_status not in ['pending', 'queued', 'running']:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot cancel job with status '{current_status}'. Only 'queued' or 'running' jobs can be cancelled."
+                    detail=f"Cannot cancel job with status '{current_status}'. Only 'pending', 'queued', or 'running' jobs can be cancelled."
                 )
 
             # Update job status to cancelled
