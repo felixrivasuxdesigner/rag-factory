@@ -44,7 +44,8 @@ class USCongressConnector(GenericRESTAPIConnector):
             default_rate_limit_preset="congress_api_demo"
         )
 
-    def __init__(self, config: Dict[str, Any], rate_limit_config: Optional[Dict] = None):
+    def __init__(self, config: Dict[str, Any], rate_limit_config: Optional[Dict] = None,
+                 cache_service: Optional[Any] = None, source_id: Optional[int] = None):
         """
         Initialize US Congress full-text connector.
 
@@ -54,6 +55,8 @@ class USCongressConnector(GenericRESTAPIConnector):
                 - limit (optional): Results per page (default: 25)
                 - congress_number (optional): Congress number (default: 119)
             rate_limit_config: Optional rate limiting configuration
+            cache_service: Optional content cache service for caching downloaded XMLs
+            source_id: Source ID for cache lookups
         """
         if not config or 'api_key' not in config:
             raise ValueError("US Congress connector requires 'api_key' in config")
@@ -87,6 +90,10 @@ class USCongressConnector(GenericRESTAPIConnector):
 
         # Initialize parent with hardcoded config
         super().__init__(config=rest_api_config, rate_limit_config=rate_limit_config)
+
+        # Store cache service
+        self.cache_service = cache_service
+        self.source_id = source_id
 
         logger.info(f"✓ US Congress FULL-TEXT connector initialized (Congress #{self.congress_number})")
 
@@ -202,30 +209,64 @@ class USCongressConnector(GenericRESTAPIConnector):
         Args:
             limit: Maximum number of documents to fetch
             offset: Offset for pagination (passed to parent)
-            since: Optional date filter (ISO format)
+            since: Optional date filter (ISO format YYYY-MM-DD)
 
         Returns:
             List of document dictionaries with COMPLETE text content
         """
+        # Convert date format from YYYY-MM-DD to ISO 8601 (YYYY-MM-DDTHH:MM:SSZ)
+        # Congress.gov API requires full ISO 8601 format for fromDateTime parameter
+        if since:
+            # Check if it's already in full ISO format
+            if 'T' not in since:
+                since = f"{since}T00:00:00Z"
+
         # First, get metadata from API
         docs = super().fetch_documents(limit=limit, since=since)
 
         logger.info(f"\n📥 Fetched {len(docs)} bills from API, now downloading FULL TEXT from XML...")
 
+        # Cache statistics
+        cache_hits = 0
+        cache_misses = 0
+
         # Now download full text for each bill
         enriched_docs = []
         for i, doc in enumerate(docs, 1):
             bill_id = doc['id']
-            logger.info(f"  [{i}/{len(docs)}] Downloading full text for bill {bill_id}...")
+            logger.info(f"  [{i}/{len(docs)}] Processing bill {bill_id}...")
 
-            # Get bill data from metadata to extract type
-            bill_data = {
-                'number': bill_id,
-                'type': doc['metadata'].get('type', 'hr')  # Default to 'hr' if not found
-            }
+            # Check cache first if available
+            full_text = None
+            if self.cache_service and self.source_id:
+                cached = self.cache_service.get_cached_content(self.source_id, bill_id)
+                if cached:
+                    full_text = cached['content']
+                    cache_hits += 1
+                    logger.info(f"    ✓ Retrieved from cache ({len(full_text)} chars)")
 
-            # Download XML content
-            full_text = self._download_bill_xml_text(bill_data)
+            # Download if not in cache
+            if not full_text:
+                cache_misses += 1
+                # Get bill data from metadata to extract type
+                bill_data = {
+                    'number': bill_id,
+                    'type': doc['metadata'].get('type', 'hr')  # Default to 'hr' if not found
+                }
+
+                # Download XML content
+                full_text = self._download_bill_xml_text(bill_data)
+
+                # Save to cache if download succeeded
+                if full_text and self.cache_service and self.source_id:
+                    self.cache_service.save_to_cache(
+                        source_id=self.source_id,
+                        external_id=bill_id,
+                        content=full_text,
+                        title=doc['title'],
+                        source_url=f"https://www.congress.gov/bill/{self.congress_number}th-congress/house-bill/{bill_id}",
+                        source_metadata=doc['metadata']
+                    )
 
             if full_text:
                 # Replace title-only content with FULL TEXT
@@ -233,7 +274,8 @@ class USCongressConnector(GenericRESTAPIConnector):
                 doc['metadata']['has_full_text'] = True
                 doc['metadata']['content_length'] = len(full_text)
                 enriched_docs.append(doc)
-                logger.info(f"    ✓ Enriched: {len(full_text)} characters")
+                if not self.cache_service or cache_misses > 0:
+                    logger.info(f"    ✓ Enriched: {len(full_text)} characters")
             else:
                 # Fallback to title if XML download failed
                 logger.warning(f"    ⚠ Using title as fallback for bill {bill_id}")
@@ -242,7 +284,11 @@ class USCongressConnector(GenericRESTAPIConnector):
                 doc['metadata']['content_length'] = len(doc['title'])
                 enriched_docs.append(doc)
 
-        logger.info(f"\n✅ Successfully enriched {len(enriched_docs)} bills with full text")
+        # Log cache statistics
+        if self.cache_service:
+            logger.info(f"\n📊 Cache Statistics: {cache_hits} hits, {cache_misses} misses ({cache_hits/(cache_hits+cache_misses)*100:.1f}% hit rate)")
+
+        logger.info(f"✅ Successfully enriched {len(enriched_docs)} bills with full text")
         return enriched_docs
 
 
