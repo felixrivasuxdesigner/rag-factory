@@ -83,20 +83,40 @@ Get statistics about a RAG project.
 ### Prerequisites
 
 1. **RAG Factory running** with at least one project configured
-2. **Python 3.11+**
-3. **MCP package**: `pip install mcp`
+2. **Python 3.10+** (3.11+ recommended)
+   - macOS system Python (3.9.6) is too old
+   - Install via Homebrew: `brew install python@3.11`
+   - Or use Docker: Run MCP server inside Docker container
+3. **MCP package**: `pip install "mcp[cli]"`
 
 ### Quick Setup
 
-1. Install the MCP package:
+**Option 1: Install Python 3.11 (Recommended)**
+
 ```bash
-cd /path/to/rag-factory/backend
-pip install mcp
+# Install Python 3.11 via Homebrew
+brew install python@3.11
+
+# Install MCP package
+pip3.11 install "mcp[cli]"
+
+# Run setup script
+./setup-mcp.sh
 ```
 
-2. Test the server:
+**Option 2: Use Docker (if Python 3.10+ not available)**
+
 ```bash
-python mcp/server.py
+# The MCP server can run inside Docker alongside other services
+# Add it to docker-compose.yml (coming soon)
+```
+
+**Manual Test:**
+
+```bash
+# Test the server (requires Python 3.10+)
+cd backend
+python3 mcp/server.py
 ```
 
 The server runs on stdio (standard input/output) and waits for MCP protocol messages.
