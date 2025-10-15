@@ -27,7 +27,7 @@ echo ""
 
 # Install MCP package
 echo "📦 Installing MCP package..."
-pip3 install mcp --quiet
+pip3 install "mcp[cli]" --quiet || pip3 install mcp --quiet
 echo "✓ MCP package installed"
 echo ""
 

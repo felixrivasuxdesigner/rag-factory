@@ -1,0 +1,4 @@
+{
+  "target_db_host": "db",
+  "target_db_port": 5432
+}

@@ -1,0 +1,7 @@
+{
+  "project_id": 14,
+  "question": "What bills are related to healthcare reform?",
+  "top_k": 5,
+  "llm_provider": "gemini",
+  "model": "gemini-flash-lite-latest"
+}

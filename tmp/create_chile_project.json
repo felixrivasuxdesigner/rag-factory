@@ -1,0 +1,14 @@
+{
+  "name": "Journey Law - Chile",
+  "description": "Chilean legal norms from BCN for Journey Law platform",
+  "target_db_host": "db",
+  "target_db_port": 5432,
+  "target_db_name": "rag_factory_db",
+  "target_db_user": "user",
+  "target_db_password": "password",
+  "target_table_name": "legal_vectors_cl",
+  "embedding_model": "jina/jina-embeddings-v2-base-es",
+  "embedding_dimension": 768,
+  "chunk_size": 1000,
+  "chunk_overlap": 200
+}

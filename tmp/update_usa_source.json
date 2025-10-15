@@ -1,0 +1,8 @@
+{
+  "config": {
+    "api_key": "DEMO_KEY",
+    "limit": 25,
+    "offset": 0,
+    "format": "json"
+  }
+}

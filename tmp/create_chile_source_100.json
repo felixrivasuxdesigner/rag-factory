@@ -1,0 +1,15 @@
+{
+  "project_id": 15,
+  "name": "Chile BCN Legal Norms",
+  "source_type": "chile_bcn",
+  "config": {
+    "limit": 100
+  },
+  "country_code": "CL",
+  "region": "Nacional",
+  "tags": {
+    "jurisdiction": "nacional",
+    "language": "es",
+    "source": "bcn.cl"
+  }
+}

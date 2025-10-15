@@ -1,0 +1,14 @@
+{
+  "name": "Journey Law - USA",
+  "description": "US Congress bills and legal documents for Journey Law platform",
+  "target_db_host": "localhost",
+  "target_db_port": 5433,
+  "target_db_name": "rag_factory_db",
+  "target_db_user": "user",
+  "target_db_password": "password",
+  "target_table_name": "legal_vectors_us",
+  "embedding_model": "jina/jina-embeddings-v2-base-es",
+  "embedding_dimension": 768,
+  "chunk_size": 1000,
+  "chunk_overlap": 200
+}

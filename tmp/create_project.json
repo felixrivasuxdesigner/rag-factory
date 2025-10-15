@@ -1,0 +1,14 @@
+{
+  "name": "Journey Law - Legal RAG System",
+  "description": "Production RAG system for Journey Law chatbot covering Chilean and USA legal documents",
+  "target_db_host": "journeylaw-postgres",
+  "target_db_port": 5432,
+  "target_db_name": "journeylaw_db",
+  "target_db_user": "journeylaw",
+  "target_db_password": "journeylaw_dev_2024",
+  "target_table_name": "document_embeddings",
+  "embedding_model": "jina/jina-embeddings-v2-base-es",
+  "embedding_dimension": 768,
+  "chunk_size": 1000,
+  "chunk_overlap": 200
+}
