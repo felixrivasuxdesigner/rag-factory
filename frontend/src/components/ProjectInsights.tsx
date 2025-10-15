@@ -56,9 +56,10 @@ export default function ProjectInsights({ projectId }: ProjectInsightsProps) {
       const statsRes = await fetch(`${API_URL}/projects/${projectId}/stats`)
       const stats = await statsRes.json()
 
-      // Fetch jobs
-      const jobsRes = await fetch(`${API_URL}/projects/${projectId}/jobs?limit=10`)
-      const jobs = await jobsRes.json()
+      // Fetch jobs (with pagination)
+      const jobsRes = await fetch(`${API_URL}/projects/${projectId}/jobs?page=1&page_size=10`)
+      const jobsData = await jobsRes.json()
+      const jobs = jobsData.jobs || []
 
       // Fetch sources
       const sourcesRes = await fetch(`${API_URL}/projects/${projectId}/sources`)
