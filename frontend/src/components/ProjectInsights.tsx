@@ -127,51 +127,57 @@ export default function ProjectInsights({ projectId }: ProjectInsightsProps) {
 
   return (
     <div className="project-insights">
-      {/* Key Metrics */}
-      <div className="insights-metrics">
-        <MetricCard
-          title="Total Documents"
-          value={insights.total_documents}
-          subtitle="Across all sources"
-          icon={FileText}
-          color="blue"
-        />
-        <MetricCard
-          title="Success Rate"
-          value={`${successRate}%`}
-          subtitle={`${insights.documents_completed} completed`}
-          icon={CheckCircle}
-          color="green"
-        />
-        <MetricCard
-          title="Failed Documents"
-          value={insights.documents_failed}
-          subtitle="Need attention"
-          icon={XCircle}
-          color="red"
-        />
-        <MetricCard
-          title="Active Sources"
-          value={insights.sources_count}
-          subtitle="Data connectors"
-          icon={Database}
-          color="purple"
-        />
-        <MetricCard
-          title="Total Jobs"
-          value={insights.total_jobs}
-          subtitle={`${insights.jobs_completed} completed`}
-          icon={TrendUp}
-          color="yellow"
-        />
-        <MetricCard
-          title="Avg. Job Time"
-          value="~2m 15s"
-          subtitle="Last 10 jobs"
-          icon={Clock}
-          color="blue"
-        />
-      </div>
+      {/* Key Metrics - Collapsible */}
+      <CollapsibleSection
+        title="Project Statistics"
+        badge={`${insights.total_documents} docs`}
+        defaultOpen={true}
+      >
+        <div className="insights-metrics">
+          <MetricCard
+            title="Total Documents"
+            value={insights.total_documents}
+            subtitle="Across all sources"
+            icon={FileText}
+            color="blue"
+          />
+          <MetricCard
+            title="Success Rate"
+            value={`${successRate}%`}
+            subtitle={`${insights.documents_completed} completed`}
+            icon={CheckCircle}
+            color="green"
+          />
+          <MetricCard
+            title="Failed Documents"
+            value={insights.documents_failed}
+            subtitle="Need attention"
+            icon={XCircle}
+            color="red"
+          />
+          <MetricCard
+            title="Active Sources"
+            value={insights.sources_count}
+            subtitle="Data connectors"
+            icon={Database}
+            color="purple"
+          />
+          <MetricCard
+            title="Total Jobs"
+            value={insights.total_jobs}
+            subtitle={`${insights.jobs_completed} completed`}
+            icon={TrendUp}
+            color="yellow"
+          />
+          <MetricCard
+            title="Avg. Job Time"
+            value="~2m 15s"
+            subtitle="Last 10 jobs"
+            icon={Clock}
+            color="blue"
+          />
+        </div>
+      </CollapsibleSection>
 
       {/* Documents by Source Chart */}
       <CollapsibleSection
