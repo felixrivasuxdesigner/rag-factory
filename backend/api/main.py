@@ -825,34 +825,82 @@ def restart_job(job_id: int):
         conn.close()
 
 
-@app.get("/projects/{project_id}/jobs", response_model=List[IngestionJobResponse])
-def list_project_jobs(project_id: int, status_filter: str = None, limit: int = 50):
-    """List ingestion jobs for a project."""
+@app.get("/projects/{project_id}/jobs")
+def list_project_jobs(
+    project_id: int,
+    status_filter: str = None,
+    page: int = 1,
+    page_size: int = 10
+):
+    """
+    List ingestion jobs for a project with pagination.
+
+    Args:
+        project_id: The project ID
+        status_filter: Optional filter by status (running, completed, failed, etc.)
+        page: Page number (starts at 1)
+        page_size: Number of items per page (default 10, max 100)
+
+    Returns:
+        Dict with jobs list, pagination metadata, and total count
+    """
     conn = get_db_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
+    # Validate and limit page_size
+    page_size = min(max(1, page_size), 100)
+    page = max(1, page)
+    offset = (page - 1) * page_size
+
     try:
         with conn.cursor() as cur:
+            # Get total count
+            if status_filter:
+                cur.execute("""
+                    SELECT COUNT(*) FROM ingestion_jobs
+                    WHERE project_id = %s AND status = %s;
+                """, (project_id, status_filter))
+            else:
+                cur.execute("""
+                    SELECT COUNT(*) FROM ingestion_jobs
+                    WHERE project_id = %s;
+                """, (project_id,))
+
+            total_count = cur.fetchone()[0]
+
+            # Get paginated jobs
             if status_filter:
                 cur.execute("""
                     SELECT * FROM ingestion_jobs
                     WHERE project_id = %s AND status = %s
                     ORDER BY created_at DESC
-                    LIMIT %s;
-                """, (project_id, status_filter, limit))
+                    LIMIT %s OFFSET %s;
+                """, (project_id, status_filter, page_size, offset))
             else:
                 cur.execute("""
                     SELECT * FROM ingestion_jobs
                     WHERE project_id = %s
                     ORDER BY created_at DESC
-                    LIMIT %s;
-                """, (project_id, limit))
+                    LIMIT %s OFFSET %s;
+                """, (project_id, page_size, offset))
 
             columns = [desc[0] for desc in cur.description]
             jobs = [dict(zip(columns, row)) for row in cur.fetchall()]
 
-        return [IngestionJobResponse(**job) for job in jobs]
+        total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
+
+        return {
+            "jobs": [IngestionJobResponse(**job).dict() for job in jobs],
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
+        }
 
     finally:
         conn.close()

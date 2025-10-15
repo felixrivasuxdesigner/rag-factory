@@ -13,6 +13,7 @@ import {
 } from '@phosphor-icons/react'
 import { useToast } from '../hooks/useToast'
 import ConfirmDialog from './ConfirmDialog'
+import Pagination from './Pagination'
 
 interface IngestionJob {
   id: number
@@ -49,13 +50,17 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalCount, setTotalCount] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   const { showToast, ToastContainer } = useToast()
   const API_URL = 'http://localhost:8000'
 
   useEffect(() => {
     fetchJobs()
-  }, [projectId])
+  }, [projectId, currentPage, pageSize])
 
   useEffect(() => {
     if (!autoRefresh) return
@@ -65,19 +70,21 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
     }, 3000) // Poll every 3 seconds
 
     return () => clearInterval(interval)
-  }, [projectId, autoRefresh])
+  }, [projectId, autoRefresh, currentPage, pageSize])
 
   const fetchJobs = async (silent = false) => {
     if (!silent) setLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/projects/${projectId}/jobs?limit=10`)
+      const response = await fetch(
+        `${API_URL}/projects/${projectId}/jobs?page=${currentPage}&page_size=${pageSize}`
+      )
       const data = await response.json()
 
       // Check if any job completed since last fetch
-      if (jobs.length > 0 && data.length > 0) {
+      if (jobs.length > 0 && data.jobs && data.jobs.length > 0) {
         const previousRunningJobs = jobs.filter(j => j.status === 'running')
-        const currentCompletedJobs = data.filter((j: IngestionJob) =>
+        const currentCompletedJobs = data.jobs.filter((j: IngestionJob) =>
           j.status === 'completed' || j.status === 'failed'
         )
 
@@ -88,12 +95,25 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
         }
       }
 
-      setJobs(data)
+      setJobs(data.jobs || [])
+      setTotalCount(data.pagination?.total_count || 0)
+      setTotalPages(data.pagination?.total_pages || 0)
     } catch (error) {
       console.error('Failed to fetch jobs:', error)
     } finally {
       if (!silent) setLoading(false)
     }
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    setAutoRefresh(false) // Pause auto-refresh when manually navigating
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize)
+    setCurrentPage(1) // Reset to first page when changing page size
+    setAutoRefresh(false) // Pause auto-refresh when changing page size
   }
 
   const getStatusIcon = (status: string) => {
@@ -388,6 +408,18 @@ export default function JobMonitor({ projectId, onJobComplete }: JobMonitorProps
           )
         })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          pageSize={pageSize}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
+      )}
 
       {/* Toast Notifications */}
       <ToastContainer />
