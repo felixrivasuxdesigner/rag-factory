@@ -45,15 +45,6 @@ interface Project {
   created_at: string
 }
 
-interface ProjectStats {
-  total_documents: number
-  documents_completed: number
-  documents_failed: number
-  total_jobs: number
-  jobs_completed: number
-  jobs_failed: number
-}
-
 interface DataSource {
   id: number
   project_id: number
@@ -82,7 +73,6 @@ function App() {
   const [health, setHealth] = useState<HealthStatus | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<number | null>(null)
-  const [stats, setStats] = useState<ProjectStats | null>(null)
   const [sources, setSources] = useState<DataSource[]>([])
   const [connectors, setConnectors] = useState<Connector[]>([])
   const [loading, setLoading] = useState(false)
@@ -111,7 +101,6 @@ function App() {
 
   useEffect(() => {
     if (selectedProject) {
-      loadProjectStats(selectedProject)
       loadProjectSources(selectedProject)
     }
   }, [selectedProject])
@@ -140,16 +129,6 @@ function App() {
       setError('Failed to load projects')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadProjectStats = async (projectId: number) => {
-    try {
-      const response = await fetch(`${API_URL}/projects/${projectId}/stats`)
-      const data = await response.json()
-      setStats(data)
-    } catch (error) {
-      console.error('Failed to load stats:', error)
     }
   }
 
@@ -426,7 +405,6 @@ function App() {
       if (response.ok) {
         setSuccess('Ingestion job started! Check stats in a few seconds.')
         setTimeout(() => {
-          loadProjectStats(selectedProject)
           setSuccess(null)
         }, 3000)
       } else {
@@ -676,7 +654,7 @@ function App() {
         <div className="tab-content">
           <JobMonitor
             projectId={selectedProject}
-            onJobComplete={() => loadProjectStats(selectedProject)}
+            onJobComplete={() => {}}
           />
         </div>
       )}
