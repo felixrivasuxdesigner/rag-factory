@@ -999,7 +999,7 @@ def start_job(job_id: int):
                 source_config,
                 target_db_config,
                 embedding_config,
-                job_timeout=600
+                job_timeout=3600  # 1 hour - supports large documents (up to ~5000 chunks)
             )
 
             logger.info(f"✓ Started and enqueued job {job_id}")
