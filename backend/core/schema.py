@@ -71,6 +71,9 @@ def create_internal_schema(conn):
         last_sync_at TIMESTAMP WITH TIME ZONE,
         next_sync_at TIMESTAMP WITH TIME ZONE,
 
+        -- Rate limiting configuration
+        rate_limits JSONB, -- Rate limiting config or preset name
+
         -- Status
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

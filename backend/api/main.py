@@ -418,16 +418,17 @@ def create_data_source(source: DataSourceCreate):
             cur.execute("""
                 INSERT INTO data_sources (
                     project_id, name, source_type, config,
-                    country_code, region, tags, sync_frequency
+                    country_code, region, tags, sync_frequency, rate_limits
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *;
             """, (
                 source.project_id, source.name, source.source_type.value,
                 psycopg2.extras.Json(source.config),
                 source.country_code, source.region,
                 psycopg2.extras.Json(source.tags) if source.tags else None,
-                source.sync_frequency
+                source.sync_frequency,
+                psycopg2.extras.Json(source.rate_limits) if source.rate_limits else None
             ))
 
             result = cur.fetchone()
@@ -1120,7 +1121,7 @@ def search_documents(request: SearchRequest):
         # Convert to response format
         search_results = [
             SearchResult(
-                id=r['id'],
+                id=str(r['id']),  # Convert to string to handle both int and str IDs
                 content=r['content'],
                 metadata=r.get('metadata'),
                 similarity=r['similarity']

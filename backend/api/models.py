@@ -240,7 +240,7 @@ class RAGQueryRequest(BaseModel):
     top_k: int = Field(5, ge=1, le=20, description="Number of context documents")
     similarity_threshold: float = Field(0.3, ge=0.0, le=1.0, description="Minimum similarity for context")
     llm_provider: str = Field("ollama", description="LLM provider: 'ollama' (local) or 'gemini' (Google AI cloud)")
-    model: str = Field("gemma3:1b-it-qat", description="Model name: ollama models or Google AI models (gemini-flash-lite-latest, gemma-3-4b-it, etc)")
+    model: str = Field("llama3.2:1b", description="Model name: ollama models or Google AI models (gemini-flash-lite-latest, llama3.2:1b, etc)")
     max_tokens: int = Field(500, ge=50, le=2000, description="Maximum tokens in response")
 
 

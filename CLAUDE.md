@@ -15,8 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database**: PostgreSQL with pgvector extension
 - **Embeddings**: Ollama (local) - jina/jina-embeddings-v2-base-es (768 dimensions, bilingual ES/EN)
 - **LLM Providers**:
-  - **Google AI Cloud** (default) - gemini-flash-lite-latest, gemma-3-4b-it, gemma-3-12b-it
-  - **Ollama Local** - gemma3:1b-it-qat, gemma3:4b-it-qat (optional)
+  - **Google AI Cloud** (recommended) - gemini-flash-lite-latest, gemini-2.0-flash-exp
+  - **Ollama Local** - llama3.2:1b (lightweight, browser-friendly)
 - **Frontend**: React 19 with TypeScript and Vite
 - **Containerization**: Docker Compose
 
@@ -109,7 +109,7 @@ docker-compose -f docker/docker-compose.yml up -d
 # View logs
 docker-compose -f docker/docker-compose.yml logs -f [service-name]
 
-# Services: db, redis, ollama, api, worker, backend, frontend
+# Services: db, redis, ollama, api, worker, frontend
 
 # Stop services
 docker-compose -f docker/docker-compose.yml down
@@ -260,25 +260,25 @@ USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
 ### LLM Models Available
 
-#### Google AI Cloud (Recommended - Fast & Free)
+#### Embeddings (Ollama Local)
+- **jina/jina-embeddings-v2-base-es** (323 MB) - Production embedding model, 768 dimensions, bilingual Spanish-English, optimized for legal/medical documents
+
+#### LLM Providers for RAG Queries
+
+**Google AI Cloud (Recommended - Fast & Free)**
 - **gemini-flash-lite-latest** (default) - Fastest, 8s response, 3.6k chars, free 1,500 queries/day
 - **gemini-2.0-flash-exp** - More detailed, 9s response, 4.1k chars
-- **gemma-3-4b-it** - Google-hosted Gemma, 7s response
-- **gemma-3-12b-it** - Most detailed, 14s response, 4k chars
 
-#### Ollama Local (Optional - Privacy-focused)
-- **jina/jina-embeddings-v2-base-es** (323 MB) - Default embedding model, 768 dimensions, bilingual Spanish-English
-- **embeddinggemma** (621 MB) - Alternative embedding model, 768 dimensions, multilingual (100+ languages)
-- **gemma3:1b-it-qat** (1.0 GB) - Faster local LLM option (~40s response)
-- **gemma3:4b-it-qat** (4.0 GB) - Better quality local LLM (~120s response)
+**Ollama Local (Browser-friendly)**
+- **llama3.2:1b** (1.3 GB) - Lightweight model optimized for browser usage, best performance for web applications
 
 ## Service Ports
 
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:3001
 - API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
-- PostgreSQL: localhost:5432
-- Redis: localhost:6379
+- PostgreSQL (RAG Factory): localhost:5433
+- Redis (RAG Factory): localhost:6380
 - Ollama: http://localhost:11434
 
 ## Development Workflow
@@ -325,10 +325,9 @@ RAG Factory supports cloud-based LLM providers for faster responses, especially 
 | Provider | Model | Response Time | Quality | Cost |
 |----------|-------|---------------|---------|------|
 | Google AI (cloud) | gemini-flash-lite | ~8s | ⭐⭐⭐⭐ | Free (1,500/day) |
-| Ollama (local) | gemma3:1b | ~40s | ⭐⭐ | Free (unlimited) |
-| Ollama (local) | gemma3:4b | ~120s | ⭐⭐⭐ | Free (unlimited) |
+| Ollama (local) | llama3.2:1b | ~15s | ⭐⭐⭐ | Free (unlimited) |
 
-**Recommendation**: Use Google AI Cloud for better user experience. Falls back to Ollama automatically if API key not configured.
+**Recommendation**: Use Google AI Cloud for production. Llama 3.2 1B provides excellent browser performance for local deployments.
 
 ## Testing
 
