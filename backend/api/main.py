@@ -787,7 +787,7 @@ def restart_job(job_id: int):
                     'database': project_data['target_db_name'],
                     'user': project_data['target_db_user'],
                     'password': project_data['target_db_password'],
-                    'table': project_data['target_table_name']
+                    'table_name': project_data['target_table_name']
                 }
 
                 embedding_config = {

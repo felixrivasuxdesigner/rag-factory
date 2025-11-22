@@ -121,3 +121,14 @@ Thumbs.db
 *.env
 # Internal documentation and development files
 .claude/internal-docs/
+
+# Backup files
+*.backup
+*.bak
+
+# Temporary development scripts
+backend/create_usa_job.py
+backend/schedule_jobs.py
+
+# VSCode workspace settings (personal)
+*.code-workspace
