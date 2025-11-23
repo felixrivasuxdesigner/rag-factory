@@ -12,15 +12,6 @@ services:
       - "5433:5432"
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama
-    container_name: rag-factory-ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    ports:
-      - "11434:11434"
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     container_name: rag-factory-redis
@@ -40,11 +31,10 @@ services:
     depends_on:
       - db
       - redis
-      - ollama
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
-      - OLLAMA_HOST=ollama
       - REDIS_URL=redis://redis:6379/0
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-}
       - PYTHONPATH=/app
     restart: unless-stopped
 
@@ -56,16 +46,14 @@ services:
     command: python run_api.py
     depends_on:
       - db
-      - ollama
       - redis
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/rag_factory_db
-      - OLLAMA_HOST=ollama
       - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
       - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-}
+      - PYTHONPATH=/app
     restart: unless-stopped
 
   frontend:
@@ -81,5 +69,4 @@ services:
 
 volumes:
   pgdata:
-  ollama_data:
   redis_data:

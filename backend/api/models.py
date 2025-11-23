@@ -36,55 +36,24 @@ class ProjectStatus(str, Enum):
     ARCHIVED = "archived"
 
 
-# RAG Project Models
+# RAG Project Models (Gemini File Search variant)
 class RAGProjectCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
+    name: str = Field(..., min_length=1, max_length=255, description="Project name (also used as File Search Store display name)")
     description: Optional[str] = None
-
-    # Target database configuration
-    target_db_host: str
-    target_db_port: int = 5432
-    target_db_name: str
-    target_db_user: str
-    target_db_password: str
-    target_table_name: str
-
-    # Embedding configuration
-    embedding_model: str = "jina/jina-embeddings-v2-base-es"
-    embedding_dimension: int = 768
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
 
 
 class RAGProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     status: Optional[ProjectStatus] = None
-    target_db_host: Optional[str] = None
-    target_db_port: Optional[int] = None
-    target_db_name: Optional[str] = None
-    target_db_user: Optional[str] = None
-    target_db_password: Optional[str] = None
-    target_table_name: Optional[str] = None
-    embedding_model: Optional[str] = None
-    embedding_dimension: Optional[int] = None
-    chunk_size: Optional[int] = None
-    chunk_overlap: Optional[int] = None
 
 
 class RAGProjectResponse(BaseModel):
     id: int
     name: str
     description: Optional[str]
-    target_db_host: str
-    target_db_port: int
-    target_db_name: str
-    target_db_user: str
-    target_table_name: str
-    embedding_model: str
-    embedding_dimension: int
-    chunk_size: int
-    chunk_overlap: int
+    gemini_file_search_store_id: Optional[str]
+    gemini_file_search_store_name: Optional[str]
     status: str
     created_at: datetime
     updated_at: datetime
@@ -197,22 +166,7 @@ class ProjectStats(BaseModel):
     vector_db_stats: Optional[Dict] = None
 
 
-# Connection Test Models
-class DatabaseConnectionTest(BaseModel):
-    host: str
-    port: int = 5432
-    database: str
-    user: str
-    password: str
-
-
-class ConnectionTestResponse(BaseModel):
-    success: bool
-    message: str
-    pgvector_available: bool = False
-
-
-# Search and Query Models
+# Search and Query Models (using Gemini File Search)
 class SearchRequest(BaseModel):
     project_id: int
     query: str = Field(..., min_length=1, description="Search query text")
@@ -236,12 +190,10 @@ class SearchResponse(BaseModel):
 
 class RAGQueryRequest(BaseModel):
     project_id: int
-    question: str = Field(..., min_length=1, description="Question to answer using RAG")
-    top_k: int = Field(5, ge=1, le=20, description="Number of context documents")
-    similarity_threshold: float = Field(0.3, ge=0.0, le=1.0, description="Minimum similarity for context")
-    llm_provider: str = Field("ollama", description="LLM provider: 'ollama' (local) or 'gemini' (Google AI cloud)")
-    model: str = Field("llama3.2:1b", description="Model name: ollama models or Google AI models (gemini-flash-lite-latest, llama3.2:1b, etc)")
+    question: str = Field(..., min_length=1, description="Question to answer using Gemini File Search")
+    model: str = Field("gemini-2.0-flash-exp", description="Gemini model to use (gemini-2.0-flash-exp, gemini-flash-lite-latest, etc)")
     max_tokens: int = Field(500, ge=50, le=2000, description="Maximum tokens in response")
+    temperature: float = Field(0.7, ge=0.0, le=1.0, description="Response randomness (0.0 = deterministic, 1.0 = creative)")
 
 
 class RAGQueryResponse(BaseModel):

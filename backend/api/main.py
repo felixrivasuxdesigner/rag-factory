@@ -19,24 +19,19 @@ from api.models import (
     DataSourceCreate, DataSourceUpdate, DataSourceResponse,
     IngestionJobCreate, IngestionJobResponse,
     DocumentTrackingResponse, ProjectStats,
-    DatabaseConnectionTest, ConnectionTestResponse,
     SearchRequest, SearchResponse, SearchResult,
     RAGQueryRequest, RAGQueryResponse
 )
 from core.database import get_db_connection
-from services.vector_db_writer import VectorDBWriter
-from services.search_service import SearchService
-from services.embedding_service import EmbeddingService
-from services.llm_service import LLMService
-from services.gemini_service import GeminiService, GEMINI_AVAILABLE
+from services.gemini_file_search_service import GeminiFileSearchService
 from connectors.registry import get_registry
 from services import scheduler_service
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="RAG Factory API",
-    description="API for creating and managing multi-project RAG systems",
-    version="1.0.0"
+    title="RAG Factory API - Gemini File Search Edition",
+    description="API for creating and managing RAG projects using Google Gemini File Search",
+    version="2.0.0-gemini"
 )
 
 # CORS middleware
@@ -53,22 +48,13 @@ REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 redis_conn = Redis.from_url(REDIS_URL)
 task_queue = Queue('rag-tasks', connection=redis_conn)
 
-# Initialize services
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:password@localhost:5432/rag_factory_db')
-embedding_service = EmbeddingService()
-search_service = SearchService(embedding_service=embedding_service)
-llm_service = LLMService(model="gemma3:1b-it-qat")
-
-# Initialize Google AI service (Gemini/Gemma) if available
-gemini_service = None
-if GEMINI_AVAILABLE:
-    try:
-        gemini_service = GeminiService(model="gemini-flash-lite-latest")
-        logger.info("✓ Google AI service initialized (gemini-flash-lite-latest)")
-    except Exception as e:
-        logger.warning(f"Google AI service not available: {e}")
-else:
-    logger.info("Google Generative AI package not installed - Google AI cloud provider unavailable")
+# Initialize Gemini File Search service
+try:
+    gemini_file_search = GeminiFileSearchService()
+    logger.info("✓ Gemini File Search service initialized")
+except Exception as e:
+    logger.error(f"Failed to initialize Gemini File Search: {e}")
+    gemini_file_search = None
 
 
 # ============================================================================
@@ -91,7 +77,7 @@ def health_check():
         "api": "healthy",
         "database": "unknown",
         "redis": "unknown",
-        "ollama": "unknown"
+        "gemini_file_search": "unknown"
     }
 
     # Check database
@@ -110,15 +96,14 @@ def health_check():
     except:
         health["redis"] = "unhealthy"
 
-    # Check Ollama
+    # Check Gemini File Search
     try:
-        import requests
-        ollama_host = os.environ.get('OLLAMA_HOST', 'localhost')
-        response = requests.get(f"http://{ollama_host}:11434/api/tags", timeout=2)
-        if response.status_code == 200:
-            health["ollama"] = "healthy"
+        if gemini_file_search and gemini_file_search.health_check():
+            health["gemini_file_search"] = "healthy"
+        else:
+            health["gemini_file_search"] = "unhealthy"
     except:
-        health["ollama"] = "unhealthy"
+        health["gemini_file_search"] = "unhealthy"
 
     return health
 
@@ -196,38 +181,42 @@ def get_connector_info(source_type: str):
 
 @app.post("/projects", response_model=RAGProjectResponse, status_code=status.HTTP_201_CREATED)
 def create_project(project: RAGProjectCreate):
-    """Create a new RAG project."""
+    """Create a new RAG project with Gemini File Search Store."""
+    if not gemini_file_search:
+        raise HTTPException(status_code=500, detail="Gemini File Search service not initialized")
+
     conn = get_db_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
     try:
+        # Create File Search Store in Gemini
+        logger.info(f"Creating Gemini File Search Store for project: {project.name}")
+        store_id = gemini_file_search.create_store(display_name=project.name)
+
+        # Insert project into database with store_id
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO rag_projects (
-                    name, description, target_db_host, target_db_port, target_db_name,
-                    target_db_user, target_db_password, target_table_name,
-                    embedding_model, embedding_dimension, chunk_size, chunk_overlap
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    name, description, gemini_file_search_store_id, gemini_file_search_store_name
+                ) VALUES (%s, %s, %s, %s)
                 RETURNING *;
             """, (
-                project.name, project.description, project.target_db_host,
-                project.target_db_port, project.target_db_name, project.target_db_user,
-                project.target_db_password, project.target_table_name,
-                project.embedding_model, project.embedding_dimension,
-                project.chunk_size, project.chunk_overlap
+                project.name, project.description, store_id, project.name
             ))
             result = cur.fetchone()
             columns = [desc[0] for desc in cur.description]
             project_data = dict(zip(columns, result))
 
         conn.commit()
+        logger.info(f"✓ Created project {project.name} with Gemini Store: {store_id}")
         return RAGProjectResponse(**project_data)
 
     except psycopg2.errors.UniqueViolation:
         raise HTTPException(status_code=400, detail="Project name already exists")
     except Exception as e:
         conn.rollback()
+        logger.error(f"Failed to create project: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
@@ -570,24 +559,14 @@ def create_ingestion_job(job: IngestionJobCreate):
             'config': source['config'],
             'country_code': source.get('country_code'),
             'region': source.get('region'),
-            'tags': source.get('tags')
+            'tags': source.get('tags'),
+            'rate_limits': source.get('rate_limits')
         }
 
-        target_db_config = {
-            'host': project['target_db_host'],
-            'port': project['target_db_port'],
-            'database': project['target_db_name'],
-            'user': project['target_db_user'],
-            'password': project['target_db_password'],
-            'table_name': project['target_table_name']
-        }
-
-        embedding_config = {
-            'model': project['embedding_model'],
-            'dimension': project['embedding_dimension'],
-            'chunk_size': project['chunk_size'],
-            'chunk_overlap': project['chunk_overlap']
-        }
+        # Get Gemini File Search Store ID
+        gemini_store_id = project.get('gemini_file_search_store_id')
+        if not gemini_store_id:
+            raise HTTPException(status_code=500, detail="Project has no Gemini File Search Store configured")
 
         # Enqueue the job with 10 minute timeout
         task_queue.enqueue(
@@ -596,8 +575,7 @@ def create_ingestion_job(job: IngestionJobCreate):
             job.project_id,
             source['id'],
             source_config,
-            target_db_config,
-            embedding_config,
+            gemini_store_id,
             job_timeout=600  # 10 minutes
         )
 
@@ -1144,7 +1122,8 @@ def search_documents(request: SearchRequest):
 @app.post("/query", response_model=RAGQueryResponse)
 def rag_query(request: RAGQueryRequest):
     """
-    Perform full RAG query: search for relevant context + generate answer using LLM.
+    Perform RAG query using Gemini File Search.
+    Gemini handles both document retrieval and answer generation in one call.
 
     Args:
         request: RAGQueryRequest with project_id, question, parameters
@@ -1152,91 +1131,62 @@ def rag_query(request: RAGQueryRequest):
     Returns:
         RAGQueryResponse with generated answer and source documents
     """
-    try:
-        logger.info(f"RAG query: project={request.project_id}, question='{request.question[:50]}...'")
+    if not gemini_file_search:
+        raise HTTPException(status_code=500, detail="Gemini File Search service not initialized")
 
-        # Step 1: Search for relevant context documents
-        context_results = search_service.search_by_project(
-            query=request.question,
-            project_id=request.project_id,
-            internal_db_url=DATABASE_URL,
-            top_k=request.top_k,
-            similarity_threshold=request.similarity_threshold
+    try:
+        logger.info(f"Gemini File Search query: project={request.project_id}, question='{request.question[:50]}...'")
+
+        # Get project to find the Gemini File Search Store ID
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT gemini_file_search_store_id FROM rag_projects WHERE id = %s;", (request.project_id,))
+                result = cur.fetchone()
+                if not result or not result[0]:
+                    raise HTTPException(status_code=404, detail="Project not found or has no Gemini File Search Store")
+
+                store_id = result[0]
+        finally:
+            conn.close()
+
+        # Query Gemini File Search (handles retrieval + generation)
+        result = gemini_file_search.query(
+            store_id=store_id,
+            question=request.question,
+            model=request.model,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature
         )
 
-        if not context_results:
-            logger.warning("No relevant documents found for query")
-            return RAGQueryResponse(
-                question=request.question,
-                answer="I couldn't find any relevant information in the knowledge base to answer your question.",
-                sources=[],
-                model=request.model,
-                project_id=request.project_id
-            )
-
-        # Convert to SearchResult format
+        # Convert sources to SearchResult format
         sources = [
             SearchResult(
-                id=str(r['id']),  # Convert to string to handle both int and str IDs
-                content=r['content'],
-                metadata=r.get('metadata'),
-                similarity=r['similarity']
+                id=str(i),
+                content=source.get('content', ''),
+                metadata={'uri': source.get('uri', '')},
+                similarity=1.0  # Gemini doesn't provide similarity scores
             )
-            for r in context_results
+            for i, source in enumerate(result.get('sources', []))
         ]
 
-        # Step 2: Generate answer using LLM with context
-        # Route to appropriate LLM provider
-        if request.llm_provider.lower() == "gemini":
-            if not gemini_service:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Google AI cloud provider not available. Please check GOOGLE_AI_API_KEY or install google-generativeai"
-                )
-
-            # Use Google AI cloud service (Gemini/Gemma)
-            logger.info(f"Using Google AI cloud provider with model: gemini-flash-lite-latest")
-            answer = gemini_service.generate_with_context(
-                question=request.question,
-                context_documents=context_results,
-                max_tokens=request.max_tokens
-            )
-        else:
-            # Use Ollama service (default)
-            if request.model != llm_service.model:
-                temp_llm = LLMService(model=request.model)
-            else:
-                temp_llm = llm_service
-
-            logger.info(f"Using Ollama provider with model: {request.model}")
-            answer = temp_llm.generate_with_context(
-                question=request.question,
-                context_documents=context_results,
-                max_tokens=request.max_tokens
-            )
-
-        if not answer:
-            logger.error("LLM failed to generate answer")
-            return RAGQueryResponse(
-                question=request.question,
-                answer="I encountered an error while generating the answer. Please try again.",
-                sources=sources,
-                model=request.model,
-                project_id=request.project_id
-            )
-
-        logger.info(f"Successfully generated RAG answer ({len(answer)} chars)")
+        logger.info(f"✓ Gemini File Search query completed ({len(result['answer'])} chars, {len(sources)} sources)")
 
         return RAGQueryResponse(
             question=request.question,
-            answer=answer,
+            answer=result['answer'],
             sources=sources,
-            model=request.model,
+            model=result['model'],
             project_id=request.project_id
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"RAG query failed: {e}", exc_info=True)
+        logger.error(f"Gemini File Search query failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

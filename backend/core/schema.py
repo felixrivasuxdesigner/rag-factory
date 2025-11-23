@@ -1,6 +1,12 @@
 """
 Database schema for internal tracking of RAG projects, data sources, and ingestion jobs.
-This is separate from the user's target PostgreSQL database where vectors are stored.
+This variant uses Google Gemini File Search instead of traditional vector databases.
+
+Key differences from traditional RAG Factory:
+- No user database configuration (host, port, credentials)
+- No embedding configuration (model, dimensions, chunk size)
+- Documents are uploaded to Gemini File Search Stores
+- Gemini handles all embedding, indexing, and search automatically
 """
 
 import logging
@@ -21,26 +27,16 @@ def create_internal_schema(conn):
     """
 
     # Table 1: RAG Projects
-    # Stores configuration for each RAG project (target database credentials, settings)
+    # Stores configuration for each RAG project using Gemini File Search
     create_projects_table = """
     CREATE TABLE IF NOT EXISTS rag_projects (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL UNIQUE,
         description TEXT,
 
-        -- Target PostgreSQL database where vectors will be stored
-        target_db_host VARCHAR(255) NOT NULL,
-        target_db_port INTEGER NOT NULL DEFAULT 5432,
-        target_db_name VARCHAR(255) NOT NULL,
-        target_db_user VARCHAR(255) NOT NULL,
-        target_db_password VARCHAR(255) NOT NULL,
-        target_table_name VARCHAR(255) NOT NULL,
-
-        -- Embedding configuration
-        embedding_model VARCHAR(100) NOT NULL DEFAULT 'jina/jina-embeddings-v2-base-es',
-        embedding_dimension INTEGER NOT NULL DEFAULT 768,
-        chunk_size INTEGER DEFAULT 1000,
-        chunk_overlap INTEGER DEFAULT 200,
+        -- Gemini File Search Store configuration
+        gemini_file_search_store_id VARCHAR(500), -- e.g., "file_search_stores/abc123"
+        gemini_file_search_store_name VARCHAR(255), -- Display name in Gemini
 
         -- Metadata
         status VARCHAR(50) DEFAULT 'active', -- active, paused, archived

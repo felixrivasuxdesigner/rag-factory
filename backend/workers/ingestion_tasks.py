@@ -1,6 +1,11 @@
 """
-RQ worker tasks for document ingestion pipeline.
-These tasks run asynchronously to process documents and generate embeddings.
+RQ worker tasks for document ingestion pipeline using Gemini File Search.
+These tasks run asynchronously to fetch documents and upload them to Gemini.
+
+Key differences from traditional RAG:
+- No embedding generation (Gemini handles this)
+- No vector database writing (documents uploaded to Gemini File Search Stores)
+- Simpler pipeline: Fetch → Upload to Gemini
 """
 
 import logging
@@ -10,12 +15,10 @@ from datetime import datetime
 from typing import Dict, List
 import psycopg2
 
-from services.embedding_service import EmbeddingService
-from services.vector_db_writer import VectorDBWriter
+from services.gemini_file_search_service import GeminiFileSearchService
 from services.content_cache_service import ContentCacheService
 from connectors.registry import ConnectorRegistry
 from processors.document_processor import DocumentProcessor
-from processors.adaptive_chunker import AdaptiveChunker
 from core.database import get_db_connection
 
 logging.basicConfig(level=logging.INFO)
@@ -130,21 +133,19 @@ def ingest_documents_from_source(
     project_id: int,
     source_id: int,
     source_config: Dict,
-    target_db_config: Dict,
-    embedding_config: Dict
+    gemini_store_id: str
 ):
     """
-    Main ingestion task: fetch documents, generate embeddings, store in user's DB.
+    Main ingestion task: fetch documents and upload to Gemini File Search Store.
 
     Args:
         job_id: Ingestion job ID
         project_id: RAG project ID
         source_id: Data source ID
         source_config: Source configuration (type, endpoint, etc.)
-        target_db_config: User's PostgreSQL config (host, port, user, password, table)
-        embedding_config: Embedding settings (model, dimension, chunk_size)
+        gemini_store_id: Gemini File Search Store ID
     """
-    logger.info(f"Starting ingestion job {job_id} for project {project_id}")
+    logger.info(f"Starting Gemini File Search ingestion job {job_id} for project {project_id}")
 
     # Update job status to running
     update_job_progress(job_id, status='running', started_at=datetime.utcnow())
@@ -221,40 +222,16 @@ def ingest_documents_from_source(
 
         logger.info(f"Fetched {total_documents} documents")
 
-        # Step 3: Initialize services
-        embedding_service = EmbeddingService(
-            model=embedding_config['model'],
-            embedding_dimension=embedding_config['dimension']
-        )
+        # Step 3: Initialize Gemini File Search service
+        gemini_service = GeminiFileSearchService()
 
-        # Initialize adaptive chunker
-        adaptive_chunker = AdaptiveChunker(
-            overlap=embedding_config.get('chunk_overlap', 200)
-        )
+        # Check API health
+        if not gemini_service.health_check():
+            raise RuntimeError("Gemini File Search API is not available")
 
-        # Check Ollama health
-        if not embedding_service.health_check():
-            raise RuntimeError("Ollama service is not available")
+        logger.info(f"✓ Connected to Gemini File Search Store: {gemini_store_id}")
 
-        # Step 3: Connect to user's vector database
-        writer = VectorDBWriter(
-            host=target_db_config['host'],
-            port=target_db_config['port'],
-            database=target_db_config['database'],
-            user=target_db_config['user'],
-            password=target_db_config['password'],
-            table_name=target_db_config['table_name'],
-            embedding_dimension=embedding_config['dimension']
-        )
-
-        if not writer.connect():
-            raise RuntimeError("Failed to connect to target database")
-
-        # Ensure pgvector and create table
-        writer.ensure_pgvector_extension()
-        writer.create_table()
-
-        # Step 4: Process each document
+        # Step 4: Upload each document to Gemini
         for doc in documents:
             # Check if job has been cancelled
             if is_job_cancelled(job_id):
@@ -266,96 +243,48 @@ def ingest_documents_from_source(
             try:
                 # Compute content hash for deduplication
                 content = doc.get('title', '') + ' ' + doc.get('content', '')
-                content_hash = embedding_service.compute_content_hash(content)
+                content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
 
                 # Check if already processed (in internal tracking DB)
                 if is_document_processed(project_id, content_hash):
                     logger.info(f"Skipping duplicate document: {doc.get('id')}")
+                    successful += 1
                     continue
 
                 # Track document as processing
                 track_document(project_id, source_id, doc, content_hash, content)
 
-                # Check if exists in user's DB
-                if writer.document_exists(doc.get('id')):
-                    logger.info(f"Document {doc.get('id')} already in target DB, skipping")
-                    mark_document_processed(project_id, content_hash, 'completed')
-                    successful += 1
-                    continue
+                # Upload document to Gemini File Search
+                # Gemini handles chunking, embedding, and indexing automatically
+                title = doc.get('title', f"Document {doc.get('id')}")
+                document_content = f"# {title}\n\n{doc.get('content', '')}"
 
-                # Use adaptive chunking based on document size
-                # This automatically selects optimal strategy (none, standard, recursive, multi_level)
-                doc_for_chunking = {
-                    'id': doc.get('id'),
-                    'content': content,
-                    'metadata': doc.get('metadata', {})
-                }
+                # Add metadata as text prefix (Gemini will index it)
+                metadata = doc.get('metadata', {})
+                if source_config.get('country_code'):
+                    metadata['country_code'] = source_config['country_code']
+                if source_config.get('region'):
+                    metadata['region'] = source_config['region']
+                if source_config.get('tags'):
+                    metadata.update(source_config['tags'])
 
-                chunk_dicts = adaptive_chunker.chunk_document(
-                    doc_for_chunking,
-                    chunk_size=embedding_config.get('chunk_size', 1000)
+                # Prepend metadata to content for better search
+                if metadata:
+                    metadata_text = "\n".join([f"{k}: {v}" for k, v in metadata.items()])
+                    document_content = f"{metadata_text}\n\n{document_content}"
+
+                gemini_doc_id = gemini_service.upload_text_document(
+                    store_id=gemini_store_id,
+                    title=title,
+                    content=document_content,
+                    document_id=doc.get('id'),
+                    metadata=metadata
                 )
 
-                # Generate embeddings and insert in batches for large documents
-                # This prevents connection timeouts and memory issues
-                BATCH_SIZE = 1000  # Process 1000 chunks at a time
-                total_chunks = len(chunk_dicts)
-                chunks_inserted = 0
+                if not gemini_doc_id:
+                    raise ValueError("Failed to upload document to Gemini File Search")
 
-                logger.info(f"Processing {total_chunks} chunks for document {doc.get('id')} in batches of {BATCH_SIZE}")
-
-                for batch_start in range(0, total_chunks, BATCH_SIZE):
-                    batch_end = min(batch_start + BATCH_SIZE, total_chunks)
-                    batch_chunks = chunk_dicts[batch_start:batch_end]
-
-                    # Generate embeddings for this batch
-                    chunk_embeddings = []
-                    for chunk_dict in batch_chunks:
-                        embedding = embedding_service.generate_embedding(chunk_dict['content'])
-                        if embedding:
-                            # Build metadata from chunk and document
-                            metadata = {
-                                **doc,
-                                **chunk_dict['metadata'],  # Includes chunking_strategy, chunk_index, etc.
-                                'content_hash': content_hash,
-                                'source_id': source_id
-                            }
-
-                            # Add country/region information from source_config
-                            if source_config.get('country_code'):
-                                metadata['country_code'] = source_config['country_code']
-                            if source_config.get('region'):
-                                metadata['region'] = source_config['region']
-                            if source_config.get('tags'):
-                                metadata['tags'] = source_config['tags']
-
-                            chunk_embeddings.append({
-                                'id': chunk_dict['id'],  # Already has format: doc_id_chunk_N
-                                'content': chunk_dict['content'],
-                                'embedding': embedding,
-                                'metadata': metadata
-                            })
-                        else:
-                            logger.warning(f"Failed to generate embedding for chunk {chunk_dict['id']}")
-
-                    if not chunk_embeddings:
-                        logger.warning(f"No embeddings generated for batch {batch_start//BATCH_SIZE + 1}")
-                        continue
-
-                    # Insert this batch into user's vector DB
-                    writer.insert_vectors(chunk_embeddings)
-                    chunks_inserted += len(chunk_embeddings)
-
-                    # Refresh connection after each batch to prevent timeouts
-                    if batch_end < total_chunks:
-                        logger.info(f"Batch {batch_start//BATCH_SIZE + 1}/{(total_chunks + BATCH_SIZE - 1)//BATCH_SIZE} complete. Refreshing connection...")
-                        if not writer.reconnect():
-                            raise RuntimeError("Failed to reconnect to target database after batch")
-
-                if chunks_inserted == 0:
-                    raise ValueError("Failed to generate any embeddings for document")
-
-                logger.info(f"✓ Inserted {chunks_inserted}/{total_chunks} chunks for document {doc.get('id')}")
+                logger.info(f"✓ Uploaded to Gemini: {gemini_doc_id}")
 
                 # Mark as successfully processed
                 mark_document_processed(project_id, content_hash, 'completed')
@@ -379,9 +308,6 @@ def ingest_documents_from_source(
                 successful_documents=successful,
                 failed_documents=failed
             )
-
-        # Close writer connection
-        writer.close()
 
         # Step 5: Update final job status
         update_job_progress(
